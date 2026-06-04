@@ -4608,8 +4608,9 @@ function goTaskSub(view, el){
   document.getElementById('tasks-nav-group').classList.add('open');
   document.getElementById('ptitle').textContent = 'Tasks';
   document.getElementById('pcrumb').textContent = titleMap[view];
-  document.getElementById('albl').textContent = view==='ballot'?'Add row':view==='sprints'?'New Sprint':'Add Task';
+  try{ const _a = document.getElementById('albl'); if(_a) _a.textContent = view==='ballot'?'Add row':view==='sprints'?'New Sprint':'Add Task'; }catch(_){}
   cpage = 'tasks';
+  try{ const _c = document.querySelector('.content'); if(_c) _c.scrollTop = 0; }catch(_){}
   if(view==='daily'){ taskDateFilter=document.getElementById('tdate').value||''; renderKanban(); }
   if(view==='monthly') renderMonthlyView();
   if(view==='ballot') renderBallotSheet();
@@ -5647,8 +5648,9 @@ function goLibSub(view, el){
   document.getElementById('library-nav-group').classList.add('open');
   document.getElementById('ptitle').textContent = 'Libraries';
   document.getElementById('pcrumb').textContent = view==='landings'?'Landing Pages':'Creative Models';
-  document.getElementById('albl').textContent = 'Add Entry';
+  try{ const _a = document.getElementById('albl'); if(_a) _a.textContent = 'Add Entry'; }catch(_){}
   cpage = 'library';
+  try{ const _c = document.querySelector('.content'); if(_c) _c.scrollTop = 0; }catch(_){}
   renderLib(view);
 }
 
@@ -5757,8 +5759,11 @@ function goPage(n,el){
   document.getElementById('pcrumb').textContent=n==='products'
     ? (productMenuView==='test'?'To Test':productMenuView==='inactive'?'Inactive Product':productMenuView==='off'?'Product Off':'Active Products')
     : C[n]||'';
-  document.getElementById('albl').textContent=n==='tasks'?'Add Task':n==='products'?'Add Product':n==='sprints'?'New Sprint':'Add';
+  /* Safely update Add button label if present (button removed from topbar in patch31) */
+  try{ const _albl = document.getElementById('albl'); if(_albl) _albl.textContent = n==='tasks'?'Add Task':n==='products'?'Add Product':n==='sprints'?'New Sprint':'Add'; }catch(_){}
   cpage=n;
+  /* Always scroll the content area back to top so the page header is visible immediately */
+  try{ const _c = document.querySelector('.content'); if(_c) _c.scrollTop = 0; window.scrollTo(0, 0); }catch(_){}
   if(n==='overview') renderOverview();
   if(n==='tasks'){ taskDateFilter=document.getElementById('tdate').value||''; renderKanban(); }
   if(n==='leads') renderLeads();
@@ -6408,7 +6413,7 @@ function ldSetStatus(type,msg){
 }
 
 async function fetchLeads(){
-  // Use the same token as SpaceSeller
+  // Use the same token as SpaceSeller (sent via Authorization to the proxy)
   const tokenEl=document.getElementById('ss-token');
   const token=(tokenEl?tokenEl.value:'').trim()||'4|bEzb0wCfIglCCXPHjyoTXCcTPy97Kvo2pHPe7KaU468ea2ce';
 
@@ -6417,25 +6422,27 @@ async function fetchLeads(){
   ldSetStatus('loading','Fetching orders from SpaceSeller…');
 
   try {
-    let all=[], page=1, done=false;
-    while(!done && page<=50){
-      const r=await fetch(`https://drop.spaceseller.ma/api/v1/orders?page=${page}&per_page=100`,{
-        headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}
-      });
-      const text=await r.text();
-      if(!r.ok) throw new Error(`HTTP ${r.status}: ${text.substring(0,120)}`);
-      const json=JSON.parse(text);
-      const items=Array.isArray(json?.data?.data)?json.data.data:Array.isArray(json?.data)?json.data:[];
-      all=all.concat(items);
-      const lastPage=json?.data?.last_page||1;
-      if(page>=lastPage||items.length===0) done=true; else page++;
-    }
+    /* Use our server-side proxy to avoid browser CORS.
+       all=1 makes the proxy walk every page server-side and return one merged list. */
+    const r = await fetch('/api/spaceseller/orders?all=1', {
+      headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
+      cache: 'no-store'
+    });
+    const text = await r.text();
+    if(!r.ok) throw new Error(`HTTP ${r.status}: ${text.substring(0,160)}`);
+    const json = JSON.parse(text);
+    if(!json.success) throw new Error(json.error || 'Proxy returned success=false');
+    const all = Array.isArray(json.orders) ? json.orders : [];
+
     // Store in shared ssOrders so SpaceSeller page also benefits
-    ssOrders=all;
-    leads=all; // alias — leads IS ssOrders
+    ssOrders = all;
+    leads = all; // alias — leads IS ssOrders
+    /* Persist to localStorage so other pages have data on next refresh */
+    try{ localStorage.setItem('ecospro_leads', JSON.stringify(all)); }catch(_){}
     ldSetStatus('ok',`${leads.length} orders loaded`);
     renderLeads();
-    renderOverview();
+    try{ renderOverview(); }catch(_){}
+    try{ if(typeof renderCustomersPage==='function') renderCustomersPage(); }catch(_){}
   } catch(err){
     ldSetStatus('error',xss(err.message));
   } finally {
@@ -8024,8 +8031,8 @@ function ssStatus(type, msg){
 }
 
 async function fetchSpaceSeller(){
-  const token=(document.getElementById('ss-token').value||'').trim();
-  if(!token){ showToast('Token required'); return; }
+  const token=(document.getElementById('ss-token').value||'').trim()
+            ||'4|bEzb0wCfIglCCXPHjyoTXCcTPy97Kvo2pHPe7KaU468ea2ce';
 
   const btn=document.getElementById('ss-fetch-btn');
   btn.disabled=true; btn.innerHTML='<i class="ti ti-loader ss-spin"></i>Loading…';
@@ -8033,23 +8040,21 @@ async function fetchSpaceSeller(){
   ssStatus('loading','Fetching from SpaceSeller…');
 
   try {
-    let all=[], page=1, done=false;
-    while(!done && page<=50){
-      const r=await fetch(`${SS_BASE}/orders?page=${page}&per_page=100`,{
-        headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}
-      });
-      const text=await r.text();
-      if(!r.ok) throw new Error(`HTTP ${r.status}: ${text.substring(0,120)}`);
-      const json=JSON.parse(text);
-      // handle Laravel paginator: json.data.data OR flat json.data
-      const items=Array.isArray(json?.data?.data)?json.data.data
-                 :Array.isArray(json?.data)?json.data:[];
-      all=all.concat(items);
-      const lastPage=json?.data?.last_page||1;
-      if(page>=lastPage||items.length===0) done=true;
-      else page++;
-    }
-    ssOrders=all;
+    /* Server-side proxy. ?all=1 paginates through every page on the server. */
+    const r = await fetch('/api/spaceseller/orders?all=1', {
+      headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
+      cache: 'no-store'
+    });
+    const text = await r.text();
+    if(!r.ok) throw new Error(`HTTP ${r.status}: ${text.substring(0,160)}`);
+    const json = JSON.parse(text);
+    if(!json.success) throw new Error(json.error || 'Proxy returned success=false');
+    const all = Array.isArray(json.orders) ? json.orders : [];
+
+    ssOrders = all;
+    /* Sync into leads array + persist so every other page sees the data */
+    try{ leads = all; localStorage.setItem('ecospro_leads', JSON.stringify(all)); }catch(_){}
+
     if(!ssOrders.length){
       ssStatus('ok','0 orders found');
       ssShow('ss-empty',true);
@@ -8058,13 +8063,17 @@ async function fetchSpaceSeller(){
     }
     ssStatus('ok',`${ssOrders.length} orders loaded`);
     renderSSAll();
+    /* Re-render dependent pages so KPIs everywhere reflect the new data */
+    try{ renderOverview(); }catch(_){}
+    try{ if(typeof renderLeads==='function') renderLeads(); }catch(_){}
+    try{ if(typeof renderCustomersPage==='function') renderCustomersPage(); }catch(_){}
   } catch(err){
     ssStatus('error',xss(err.message));
     ssShow('ss-empty',true);
     document.getElementById('ss-empty').innerHTML=`
       <i class="ti ti-alert-circle" style="font-size:32px;color:var(--red);display:block;margin-bottom:8px"></i>
       <p style="color:var(--red);font-size:13px;font-weight:700">${xss(err.message)}</p>
-      <p style="color:var(--m2);font-size:11px;margin-top:6px">Open this file via a web server, not file://. Example:<br><code>python3 -m http.server 8080</code></p>`;
+      <p style="color:var(--m2);font-size:11px;margin-top:6px">Check the SpaceSeller token in Settings, or the proxy /api/spaceseller/orders.</p>`;
   } finally {
     btn.disabled=false; btn.innerHTML='<i class="ti ti-refresh"></i>Fetch Orders';
   }
@@ -10588,14 +10597,18 @@ async function fetchSpaceSellerStatuses(){
   try{
     const token = ssGetToken();
     if(!token) return;
-    const r = await fetch(`${SS_BASE}/statuses`, {
-      headers:{ 'Authorization':'Bearer '+token, 'Accept':'application/json' }
+    const r = await fetch('/api/spaceseller/statuses', {
+      headers:{ 'Authorization':'Bearer '+token, 'Accept':'application/json' },
+      cache:'no-store'
     });
     if(!r.ok) return;
     const data = await r.json();
-    if(data?.success && data.data){
-      SS_STATUSES = data.data;
-      LS.setItem('ecos_ss_statuses', JSON.stringify(SS_STATUSES));
+    if(data?.success){
+      SS_STATUSES = {
+        order_statuses: data.order_statuses || [],
+        delivery_statuses: data.delivery_statuses || []
+      };
+      try{ LS.setItem('ecos_ss_statuses', JSON.stringify(SS_STATUSES)); }catch(_){}
       populateStatusFilters();
     }
   } catch(e){ console.warn('statuses fetch failed', e); }
@@ -10700,7 +10713,7 @@ async function submitNewOrder(){
   btn.disabled = true; const orig = btn.innerHTML; btn.innerHTML = '<i class="ti ti-loader ss-spin"></i>Sending…';
   try {
     const token = ssGetToken();
-    const r = await fetch(`${SS_BASE}/orders`, {
+    const r = await fetch('/api/spaceseller/orders', {
       method:'POST',
       headers:{
         'Authorization':'Bearer '+token,
@@ -10709,13 +10722,16 @@ async function submitNewOrder(){
       },
       body: JSON.stringify(payload),
     });
-    const data = await r.json().catch(()=>({}));
-    if(r.status===401){ throw new Error('Unauthenticated — check your token'); }
-    if(r.status===422){
+    const wrapped = await r.json().catch(()=>({}));
+    /* The proxy wraps the SpaceSeller response in {success, status, data} */
+    const upstreamStatus = wrapped?.status || r.status;
+    const data = wrapped?.data || wrapped;
+    if(upstreamStatus===401){ throw new Error('Unauthenticated — check your token'); }
+    if(upstreamStatus===422){
       const fieldErr = data?.errors ? Object.entries(data.errors).map(([k,v])=>`${k}: ${(v||[]).join(', ')}`).join(' · ') : data?.message;
       throw new Error(fieldErr || 'Validation failed');
     }
-    if(!r.ok || !data?.success){ throw new Error(data?.error || data?.message || `HTTP ${r.status}`); }
+    if(!wrapped?.success || !data?.success){ throw new Error(data?.error || data?.message || wrapped?.error || `HTTP ${upstreamStatus}`); }
 
     const d = data.data || {};
     okEl.innerHTML = `<strong>✓ Order created</strong> · ID <code>${xss(String(d.order_id||''))}</code> · UUID <code>${xss(String(d.uuid||'').slice(0,12)+'…')}</code> · Status <strong>${xss(statusLabel(d.status,''+ ''))}</strong>`;
@@ -10744,8 +10760,9 @@ async function openOrderDetailModal(orderId){
   </div>`;
   try {
     const token = ssGetToken();
-    const r = await fetch(`${SS_BASE}/orders/${orderId}`, {
-      headers:{ 'Authorization':'Bearer '+token, 'Accept':'application/json' }
+    const r = await fetch(`/api/spaceseller/orders/${encodeURIComponent(orderId)}`, {
+      headers:{ 'Authorization':'Bearer '+token, 'Accept':'application/json' },
+      cache:'no-store'
     });
     const data = await r.json().catch(()=>({}));
     if(!r.ok || !data?.success){ throw new Error(data?.error || data?.message || `HTTP ${r.status}`); }
@@ -13112,36 +13129,86 @@ function renderTopCreatives(){
             <div class="ov-prod-name">${xss(r.name||'(unnamed)')}</div>
             <div class="ov-prod-sku">${xss(r.objective||'')} · ${xss(r.status||'')}</div>
           </div>
-        </div>
-      </td>
-      <td><span class="ov-num muted">${xss(r.accName||'')}</span></td>
-      <td style="text-align:right" class="ov-num">${fmt(r.spend)}</td>
-      <td style="text-align:right" class="ov-num">${fmt(r.impressions)}</td>
-      <td style="text-align:right"><span class="ov-rate-tag ${r.hookRate>=25?'good':r.hookRate>=15?'mid':'bad'}">${r.hookRate?r.hookRate+'%':'—'}</span></td>
-      <td style="text-align:right"><span class="ov-rate-tag ${r.ctr>=2?'good':r.ctr>=1?'mid':'bad'}">${r.ctr.toFixed(2)}%</span></td>
-      <td style="text-align:right" class="ov-num ${cls(r.cpm, 0, 50)}">${r.cpm.toFixed(2)}</td>
-      <td style="text-align:right" class="ov-num ${cls(50-r.cpa, 0, 0)}">${r.cpa ? r.cpa.toFixed(2) : '—'}</td>
-      <td style="text-align:right" class="ov-num">${fmt(r.purchases)}</td>
-    </tr>`).join('');
+        </td>
+        <td><span class="ov-num muted">${xss(r.accName||'')}</span></td>
+        <td style="text-align:right" class="ov-num">${fmt(r.spend)}</td>
+        <td style="text-align:right" class="ov-num">${fmt(r.impressions)}</td>
+        <td style="text-align:right"><span class="ov-rate-tag ${r.hookRate>=25?'good':r.hookRate>=15?'mid':'bad'}">${r.hookRate?r.hookRate+'%':'—'}</span></td>
+        <td style="text-align:right"><span class="ov-rate-tag ${r.ctr>=2?'good':r.ctr>=1?'mid':'bad'}">${r.ctr.toFixed(2)}%</span></td>
+        <td style="text-align:right" class="ov-num ${cls(r.cpm, 0, 50)}">${r.cpm.toFixed(2)}</td>
+        <td style="text-align:right" class="ov-num ${cls(50-r.cpa, 0, 0)}">${r.cpa ? r.cpa.toFixed(2) : '—'}</td>
+        <td style="text-align:right" class="ov-num">${fmt(r.purchases)}</td>
+      </tr>`).join('');
 }
 
-/* ── INIT ── */
+/* ══ INIT ══ */
 seedAuth();
-if(!getCurrentUser()){ showLogin(); } else { hideLogin(); applyAuthUI(); }
-/* Initialize theme button label */
-(function(){
-  const t = document.documentElement.getAttribute('data-theme') || 'light';
-  const btn = document.getElementById('theme-toggle-btn');
-  if(btn) btn.innerHTML = t==='dark' ? '<i class="ti ti-sun"></i>Light mode' : '<i class="ti ti-moon"></i>Dark mode';
+applyAuthUI();
+
+/* Restore cached leads/orders from localStorage so KPIs work before Sync is clicked */
+try {
+  const cached = localStorage.getItem('ecospro_leads');
+  if (cached) {
+    const arr = JSON.parse(cached);
+    if (Array.isArray(arr) && arr.length) {
+      leads = arr;
+      ssOrders = arr;
+    }
+  }
+  const cachedStat = localStorage.getItem('ecos_ss_statuses');
+  if (cachedStat) {
+    try { SS_STATUSES = JSON.parse(cachedStat) || SS_STATUSES; } catch(_){}
+  }
+} catch(_){}
+
+/* Auto-sync SpaceSeller on boot (silent — don\'t block UI). */
+(async function bootAutoSync(){
+  try {
+    if (typeof fetchSpaceSellerStatuses === 'function') await fetchSpaceSellerStatuses();
+  } catch(_){}
+  try {
+    const tokenEl = document.getElementById('ss-token');
+    const token = (tokenEl ? tokenEl.value : '').trim() || '4|bEzb0wCfIglCCXPHjyoTXCcTPy97Kvo2pHPe7KaU468ea2ce';
+    const r = await fetch('/api/spaceseller/orders?all=1', {
+      headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
+      cache: 'no-store'
+    });
+    if (!r.ok) return;
+    const json = await r.json();
+    if (!json || !json.success) return;
+    const all = Array.isArray(json.orders) ? json.orders : [];
+    if (!all.length) return;
+    ssOrders = all;
+    leads = all;
+    try { localStorage.setItem('ecospro_leads', JSON.stringify(all)); } catch(_){}
+    try { if (typeof renderOverview === 'function' && cpage === 'overview') renderOverview(); } catch(_){}
+    try { if (typeof renderLeads === 'function' && cpage === 'leads') renderLeads(); } catch(_){}
+    try { if (typeof renderSSAll === 'function' && cpage === 'spaceseller') renderSSAll(); } catch(_){}
+    try { if (typeof renderCustomersPage === 'function' && cpage === 'customers') renderCustomersPage(); } catch(_){}
+    try { showToast('✓ ' + all.length + ' orders synced from SpaceSeller'); } catch(_){}
+  } catch(_){}
 })();
-try{ updateNotifBadge(); }catch(e){}
-try{ applyAuthUI(); }catch(e){ console.warn('applyAuthUI init:',e); }
-try{ fetchSpaceSellerStatuses(); }catch(e){}
-renderOverview();
-renderKanban();
-renderLeads();
-try{ renderTeam(); }catch(e){}
-updateSimulator();
+
+/* Periodic resync — every 5 minutes pull fresh SpaceSeller data */
+setInterval(() => {
+  if (document.hidden) return;
+  fetch('/api/spaceseller/orders?all=1', {
+    headers: { 'Authorization': 'Bearer ' + ((document.getElementById('ss-token')?.value||'').trim() || '4|bEzb0wCfIglCCXPHjyoTXCcTPy97Kvo2pHPe7KaU468ea2ce'),
+               'Accept': 'application/json' },
+    cache: 'no-store'
+  }).then(r => r.ok ? r.json() : null).then(j => {
+    if (!j || !j.success) return;
+    const all = Array.isArray(j.orders) ? j.orders : [];
+    ssOrders = all;
+    leads = all;
+    try { localStorage.setItem('ecospro_leads', JSON.stringify(all)); } catch(_){}
+    if (cpage === 'overview' && typeof renderOverview === 'function') renderOverview();
+    else if (cpage === 'leads' && typeof renderLeads === 'function') renderLeads();
+    else if (cpage === 'spaceseller' && typeof renderSSAll === 'function') renderSSAll();
+    else if (cpage === 'customers' && typeof renderCustomersPage === 'function') renderCustomersPage();
+  }).catch(()=>{});
+}, 300000);
+
 </script>
 </body>
 </html>
