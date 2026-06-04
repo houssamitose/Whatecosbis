@@ -84,12 +84,12 @@ html,body{height:100%;font-family:'Plus Jakarta Sans',sans-serif;background:var(
 
 /* ── TOPBAR ── */
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden}
-.topbar{height:54px;min-height:54px;background:var(--s1);border-bottom:1px solid var(--bd);padding:0 22px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--sh);transition:background .2s}
+.topbar{height:54px;min-height:54px;background:var(--s1);border-bottom:1px solid var(--bd);padding:0 22px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--sh);transition:background .2s;flex-wrap:nowrap;overflow:hidden}
 .tb-l{display:flex;align-items:center;gap:8px}
 .tb-title{font-size:15px;font-weight:800;letter-spacing:-.3px}
 .tb-sep{color:var(--m2)}
 .tb-crumb{font-size:12px;color:var(--m1);font-weight:500}
-.tb-r{display:flex;align-items:center;gap:8px}
+.tb-r{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;flex-shrink:0;white-space:nowrap}
 .tb-date{font-size:11px;color:var(--m1);font-weight:600;padding:0 8px;display:flex;align-items:center;gap:4px}
 .btn{display:inline-flex;align-items:center;gap:5px;padding:8px 13px;border-radius:8px;border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all .12s}
 .btn-p{background:var(--acc);color:#fff}
@@ -1903,7 +1903,6 @@ tr.clickable:hover{background:var(--s2)!important}
         </div>
       </button>
       <button class="theme-btn" onclick="toggleTheme()" title="Toggle theme"><i class="ti ti-moon" id="ticon"></i></button>
-      <button class="btn btn-p" onclick="openAdd()"><i class="ti ti-plus"></i><span id="albl">Add</span></button>
     </div>
   </div>
 
@@ -1957,6 +1956,31 @@ tr.clickable:hover{background:var(--s2)!important}
               </tr>
             </thead>
             <tbody id="ov-prods-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="sec" style="display:flex;align-items:center;justify-content:space-between">
+          <span><i class="ti ti-trending-up"></i>Top Creatives (today)</span>
+          <span style="font-size:11px;color:var(--m1);font-weight:500">Hook Rate · CTR · CPM · CPA — pulled from Meta Ads</span>
+        </div>
+        <div class="ov-prods-wrap" style="margin-top:10px">
+          <table class="ov-prods-table" id="ov-creatives-table">
+            <thead>
+              <tr>
+                <th>Creative / Campaign</th>
+                <th>Account</th>
+                <th style="text-align:right">Spend</th>
+                <th style="text-align:right">Impressions</th>
+                <th style="text-align:right">Hook Rate</th>
+                <th style="text-align:right">CTR</th>
+                <th style="text-align:right">CPM</th>
+                <th style="text-align:right">CPA</th>
+                <th style="text-align:right">Purchases</th>
+              </tr>
+            </thead>
+            <tbody id="ov-creatives-tbody"></tbody>
           </table>
         </div>
       </div>
@@ -5838,6 +5862,7 @@ function renderOverview(){
   setH('ov-k-winrate-sub', `<span class="tag ${winRate>=50?'tg':winRate>=25?'ta':'tr'}">${activeCount}/${denom||0} converted</span>`);
   set('ov-k-profit', totalNet.toLocaleString(undefined,{maximumFractionDigits:0})+' MAD');
   setH('ov-k-profit-sub', `<span class="tag tp">Ad spend ${totalAdSpend.toLocaleString(undefined,{maximumFractionDigits:0})} MAD</span>`);
+  try{ renderTopCreatives(); }catch(e){ console.warn('top creatives render:', e); }
 
   const tbody = document.getElementById('ov-prods-tbody');
   if(!tbody) return;
@@ -9065,6 +9090,7 @@ async function fetchAll() {
         // Get all result types FB tracks
         const purch   = parseInt(actions.find(a=>a.action_type==='purchase')?.value||0)
                       + parseInt(actions.find(a=>a.action_type==='offsite_conversion.fb_pixel_purchase')?.value||0);
+        const video3 = parseInt(actions.find(a=>a.action_type==='video_view'||a.action_type==='video_3_sec_watched_actions')?.value||0);
         const leads   = parseInt(actions.find(a=>a.action_type==='lead')?.value||0)
                       + parseInt(actions.find(a=>a.action_type==='onsite_conversion.lead_grouped')?.value||0);
         const results = purch || leads || parseInt(actions.find(a=>a.action_type==='post_engagement')?.value||0);
@@ -9080,7 +9106,8 @@ async function fetchAll() {
           clicks:parseInt(ins.clicks||0), ctr:parseFloat(ins.ctr||0),
           cpc:parseFloat(ins.cpc||0), cpm:parseFloat(ins.cpm||0),
           reach:parseInt(ins.reach||0), freq:parseFloat(ins.frequency||0),
-          purch: results, cpl, budget:parseFloat(c.daily_budget||c.lifetime_budget||0)/100
+          purch: results, cpl, budget:parseFloat(c.daily_budget||c.lifetime_budget||0)/100,
+          video_3sec: video3
         };
       });
       acc.spend = accSpend; acc.active = accActive; acc.af_campaigns = items.length;
@@ -13048,6 +13075,55 @@ function renderTeamResults(){
 }
 
 
+
+
+/* ═══════════════════════════════════════
+   TOP CREATIVES (today) — pulled from Meta Ads insights
+═══════════════════════════════════════ */
+function renderTopCreatives(){
+  const tbody = document.getElementById('ov-creatives-tbody'); if(!tbody) return;
+  const camps = (typeof af_campaigns !== 'undefined' && Array.isArray(af_campaigns)) ? af_campaigns : [];
+  if(!camps.length){
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--m2)">No campaigns synced yet — go to Campaigns page and connect an ad account.</td></tr>`;
+    return;
+  }
+  /* Compute metrics + sort by spend desc */
+  const rows = camps.map(c=>{
+    const spend = parseFloat(c.spend||0);
+    const impressions = parseInt(c.impressions||0);
+    const clicks = parseInt(c.clicks||0);
+    const purchases = parseInt(c.purch||0);
+    const ctr = parseFloat(c.ctr||0);
+    const cpm = parseFloat(c.cpm||0);
+    /* Hook rate = 3-sec views / impressions. Approximation: if no video data, use CTR/2 as a proxy */
+    const hookRate = c.video_3sec ? Math.round((c.video_3sec/impressions)*100*10)/10 : 0;
+    const cpa = purchases > 0 ? +(spend/purchases).toFixed(2) : 0;
+    return { ...c, spend, impressions, clicks, purchases, ctr, cpm, hookRate, cpa };
+  }).sort((a,b)=>b.spend-a.spend).slice(0,15);
+
+  const fmt = n => Math.round(n||0).toLocaleString();
+  const cls = (val, good, bad) => val >= good ? 'green' : val <= bad ? 'red' : '';
+  tbody.innerHTML = rows.map(r=>`
+    <tr>
+      <td>
+        <div class="ov-prod-cell">
+          <div class="ov-prod-img"><i class="ti ti-${r.status==='ACTIVE'?'player-play':'player-pause'}" style="font-size:13px;color:var(--${r.status==='ACTIVE'?'green':'m2'})"></i></div>
+          <div class="ov-prod-meta">
+            <div class="ov-prod-name">${xss(r.name||'(unnamed)')}</div>
+            <div class="ov-prod-sku">${xss(r.objective||'')} · ${xss(r.status||'')}</div>
+          </div>
+        </div>
+      </td>
+      <td><span class="ov-num muted">${xss(r.accName||'')}</span></td>
+      <td style="text-align:right" class="ov-num">${fmt(r.spend)}</td>
+      <td style="text-align:right" class="ov-num">${fmt(r.impressions)}</td>
+      <td style="text-align:right"><span class="ov-rate-tag ${r.hookRate>=25?'good':r.hookRate>=15?'mid':'bad'}">${r.hookRate?r.hookRate+'%':'—'}</span></td>
+      <td style="text-align:right"><span class="ov-rate-tag ${r.ctr>=2?'good':r.ctr>=1?'mid':'bad'}">${r.ctr.toFixed(2)}%</span></td>
+      <td style="text-align:right" class="ov-num ${cls(r.cpm, 0, 50)}">${r.cpm.toFixed(2)}</td>
+      <td style="text-align:right" class="ov-num ${cls(50-r.cpa, 0, 0)}">${r.cpa ? r.cpa.toFixed(2) : '—'}</td>
+      <td style="text-align:right" class="ov-num">${fmt(r.purchases)}</td>
+    </tr>`).join('');
+}
 
 /* ── INIT ── */
 seedAuth();
