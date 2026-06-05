@@ -39,10 +39,10 @@
 }
 
 html,body{height:100%;font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--txt);font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased;transition:background .2s,color .2s}
-.app{display:flex;height:100vh;overflow:hidden}
+.app{display:flex;height:100vh;min-height:100vh;overflow:hidden}
 
 /* ── SIDEBAR ── */
-.sb{width:216px;min-width:216px;background:var(--s1);border-right:1px solid var(--bd);display:flex;flex-direction:column;z-index:10;box-shadow:var(--sh);transition:background .2s}
+.sb{width:216px;min-width:216px;height:100vh;max-height:100vh;background:var(--s1);border-right:1px solid var(--bd);display:flex;flex-direction:column;z-index:10;box-shadow:var(--sh);transition:background .2s}
 .sb-logo{padding:18px 16px;display:flex;align-items:center;gap:9px;border-bottom:1px solid var(--bd)}
 .sb-icon{width:30px;height:30px;border-radius:8px;background:var(--acc);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .sb-icon i{font-size:16px;color:#fff}
@@ -83,7 +83,7 @@ html,body{height:100%;font-family:'Plus Jakarta Sans',sans-serif;background:var(
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
 /* ── TOPBAR ── */
-.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.main{flex:1;min-width:0;height:100vh;display:flex;flex-direction:column;overflow:hidden}
 .topbar{height:54px;min-height:54px;background:var(--s1);border-bottom:1px solid var(--bd);padding:0 22px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--sh);transition:background .2s;flex-wrap:nowrap;overflow:hidden}
 .tb-l{display:flex;align-items:center;gap:8px}
 .tb-title{font-size:15px;font-weight:800;letter-spacing:-.3px}
@@ -2087,6 +2087,7 @@ tr.clickable:hover{background:var(--s2)!important}
           </select>
           <input type="text" class="fsel" id="ld-search" oninput="renderLeads()" placeholder="Search name / phone…" style="min-width:160px">
           <button class="btn btn-p" onclick="openNewOrderModal()"><i class="ti ti-plus"></i>New order</button>
+          <button class="btn" style="border:1px solid var(--bd);background:var(--s2)" onclick="importOrderIds()" title="Paste order IDs from your SpaceSeller dashboard to track them"><i class="ti ti-cloud-upload"></i>Import IDs</button>
           <button class="btn btn-p" id="ld-fetch-btn" onclick="fetchLeads()"><i class="ti ti-refresh"></i>Sync</button>
         </div>
       </div>
@@ -2195,12 +2196,12 @@ tr.clickable:hover{background:var(--s2)!important}
           </div>
         </div>
         <div class="ss-topbar-r">
-          <div class="ss-token-wrap">
-            <input type="password" class="ss-token-input" id="ss-token" placeholder="Bearer token…" value="4|bEzb0wCfIglCCXPHjyoTXCcTPy97Kvo2pHPe7KaU468ea2ce">
-            <button class="tbn ss-token-eye" onclick="toggleTokenVis()" title="Show/hide"><i class="ti ti-eye" id="ss-eye-icon" style="font-size:14px"></i></button>
-          </div>
+          <!-- Hidden input keeps every legacy reader (#ss-token .value) working. The real token is managed in Settings → API Keys. -->
+          <input type="hidden" id="ss-token" value="">
+          <button class="btn" style="border:1px solid var(--bd);background:var(--s2)" onclick="_goSettings('api')" title="Manage the SpaceSeller token in Settings → API Keys"><i class="ti ti-key"></i>Token in Settings</button>
+          <button class="btn" style="border:1px solid var(--bd);background:var(--s2)" onclick="importOrderIds()" title="Paste order IDs from your SpaceSeller dashboard"><i class="ti ti-cloud-upload"></i>Import IDs</button>
           <button class="btn btn-p" id="ss-fetch-btn" onclick="fetchSpaceSeller()">
-            <i class="ti ti-refresh"></i>Fetch Orders
+            <i class="ti ti-refresh"></i>Sync Tracked Orders
           </button>
         </div>
       </div>
@@ -3940,12 +3941,17 @@ function seedAuth(){
     keys.push({id:'k_claude', name:'Claude (Anthropic) API key', icon:'sparkles', value:'', notes:'Used by the in-CRM AI Assistant. Get yours at console.anthropic.com/settings/keys'});
     LS.setItem('ecos_api_keys', JSON.stringify(keys));
   }
+  if(keys && !keys.find(k=>k.id==='k_spaceseller')){
+    keys.push({id:'k_spaceseller', name:'SpaceSeller / Mediaplus API token', icon:'truck-delivery', value:'4|bEzb0wCfIglCCXPHjyoTXCcTPy97Kvo2pHPe7KaU468ea2ce', notes:'Bearer token for drop.spaceseller.ma — used to create orders and poll their status. Provided by the Mediaplus team.'});
+    LS.setItem('ecos_api_keys', JSON.stringify(keys));
+  }
   if(!keys){
     keys = [
       {id:'k_gsheets', name:'Google Sheets API', icon:'table', value:'', notes:'Used to sync leads/products with Google Sheets. Get your key at console.cloud.google.com'},
       {id:'k_gdocs',   name:'Google Docs API',   icon:'file-text', value:'', notes:'Used to push reports to Google Docs. Same console as Sheets.'},
       {id:'k_kie',     name:'Kie.ai API key',    icon:'movie', value:'', notes:'Used for Veo 3.1 video generation. Get yours at kie.ai/api-key'},
       {id:'k_claude',  name:'Claude (Anthropic) API key', icon:'sparkles', value:'', notes:'Used by the in-CRM AI Assistant. Get yours at console.anthropic.com/settings/keys'},
+      {id:'k_spaceseller', name:'SpaceSeller / Mediaplus API token', icon:'truck-delivery', value:'4|bEzb0wCfIglCCXPHjyoTXCcTPy97Kvo2pHPe7KaU468ea2ce', notes:'Bearer token for drop.spaceseller.ma — used to create orders and poll their status. Provided by the Mediaplus team.'},
     ];
     LS.setItem('ecos_api_keys', JSON.stringify(keys));
   }
@@ -6412,19 +6418,72 @@ function ldSetStatus(type,msg){
   e.className='ss-status-'+type; e.innerHTML=ic+' '+msg; e.style.display='';
 }
 
+/* Read the SpaceSeller bearer token from the centralized Settings API-keys store.
+   Falls back to the existing #ss-token input value, then to the bundled default token. */
+function getSpaceSellerToken(){
+  try {
+    const raw = LS.getItem('ecos_api_keys');
+    if (raw) {
+      const list = JSON.parse(raw) || [];
+      const k = list.find(x => x.id === 'k_spaceseller');
+      if (k && k.value && k.value.trim()) return k.value.trim();
+    }
+  } catch(_){}
+  const el = document.getElementById('ss-token');
+  if (el && el.value && el.value.trim()) return el.value.trim();
+  return '4|bEzb0wCfIglCCXPHjyoTXCcTPy97Kvo2pHPe7KaU468ea2ce';
+}
+/* Keep the hidden #ss-token mirror in sync so any legacy code that reads it still works. */
+function syncSpaceSellerTokenMirror(){
+  const el = document.getElementById('ss-token');
+  if (el) el.value = getSpaceSellerToken();
+}
+
+/* Returns the deduped list of order_ids the CRM is tracking.
+   Sources: any locally cached order objects + the persisted ID list. */
+function ssTrackedIds(){
+  const ids = new Set();
+  try {
+    (typeof leads !== 'undefined' && Array.isArray(leads) ? leads : []).forEach(o => {
+      const k = o.order_id || o.id; if (k) ids.add(String(k));
+    });
+    (typeof ssOrders !== 'undefined' && Array.isArray(ssOrders) ? ssOrders : []).forEach(o => {
+      const k = o.order_id || o.id; if (k) ids.add(String(k));
+    });
+    const raw = localStorage.getItem('ecospro_tracked_ids');
+    if (raw) JSON.parse(raw).forEach(id => ids.add(String(id)));
+  } catch(_){}
+  return [...ids];
+}
+function ssAddTrackedIds(idsArr){
+  if (!Array.isArray(idsArr) || !idsArr.length) return;
+  const set = new Set(ssTrackedIds());
+  idsArr.forEach(id => { id = String(id).trim(); if (id) set.add(id); });
+  try { localStorage.setItem('ecospro_tracked_ids', JSON.stringify([...set])); } catch(_){}
+}
+
 async function fetchLeads(){
-  // Use the same token as SpaceSeller (sent via Authorization to the proxy)
-  const tokenEl=document.getElementById('ss-token');
-  const token=(tokenEl?tokenEl.value:'').trim()||'4|bEzb0wCfIglCCXPHjyoTXCcTPy97Kvo2pHPe7KaU468ea2ce';
+  /* Token is centralized in Settings → API Keys (id: k_spaceseller). */
+  const token = getSpaceSellerToken();
+  syncSpaceSellerTokenMirror();
 
   const btn=document.getElementById('ld-fetch-btn');
   btn.disabled=true; btn.innerHTML='<i class="ti ti-loader ss-spin"></i>Syncing…';
-  ldSetStatus('loading','Fetching orders from SpaceSeller…');
+  ldSetStatus('loading','Polling SpaceSeller for tracked orders…');
 
   try {
-    /* Use our server-side proxy to avoid browser CORS.
-       all=1 makes the proxy walk every page server-side and return one merged list. */
-    const r = await fetch('/api/spaceseller/orders?all=1', {
+    /* SpaceSeller has no list endpoint — poll each tracked order_id individually.
+       Tracked IDs come from: locally created orders + any IDs the user imported. */
+    const ids = ssTrackedIds();
+    if (!ids.length) {
+      ldSetStatus('ok','No tracked order IDs yet. Click "Import IDs" to add some.');
+      leads = [];
+      try{ localStorage.setItem('ecospro_leads', JSON.stringify([])); }catch(_){}
+      renderLeads();
+      return;
+    }
+    const url = '/api/spaceseller/orders?ids=' + encodeURIComponent(ids.join(','));
+    const r = await fetch(url, {
       headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
       cache: 'no-store'
     });
@@ -6434,12 +6493,13 @@ async function fetchLeads(){
     if(!json.success) throw new Error(json.error || 'Proxy returned success=false');
     const all = Array.isArray(json.orders) ? json.orders : [];
 
-    // Store in shared ssOrders so SpaceSeller page also benefits
     ssOrders = all;
-    leads = all; // alias — leads IS ssOrders
-    /* Persist to localStorage so other pages have data on next refresh */
+    leads = all;
     try{ localStorage.setItem('ecospro_leads', JSON.stringify(all)); }catch(_){}
-    ldSetStatus('ok',`${leads.length} orders loaded`);
+
+    const errCount = (json.errors || []).length;
+    const msg = `${all.length} of ${json.requested} orders synced` + (errCount ? ` (${errCount} not found)` : '');
+    ldSetStatus(errCount === json.requested ? 'error' : 'ok', msg);
     renderLeads();
     try{ renderOverview(); }catch(_){}
     try{ if(typeof renderCustomersPage==='function') renderCustomersPage(); }catch(_){}
@@ -6448,6 +6508,22 @@ async function fetchLeads(){
   } finally {
     btn.disabled=false; btn.innerHTML='<i class="ti ti-refresh"></i>Sync';
   }
+}
+
+/* Prompt the user to paste order_ids from their SpaceSeller dashboard, then sync them */
+async function importOrderIds(){
+  const raw = prompt(
+    'Paste order IDs from your SpaceSeller dashboard\n\n' +
+    'Comma or newline separated. Example:\n278669, 278670, 278671\n\n' +
+    'SpaceSeller has no "list all orders" API, so the CRM tracks IDs and polls each ' +
+    'one for live status updates.'
+  );
+  if (!raw) return;
+  const ids = raw.split(/[,\s]+/).map(s=>s.trim()).filter(Boolean);
+  if (!ids.length) { showToast('No IDs entered'); return; }
+  ssAddTrackedIds(ids);
+  showToast('Added ' + ids.length + ' IDs to tracking. Syncing…');
+  fetchLeads();
 }
 
 function renderLeads(){
@@ -8031,17 +8107,28 @@ function ssStatus(type, msg){
 }
 
 async function fetchSpaceSeller(){
-  const token=(document.getElementById('ss-token').value||'').trim()
-            ||'4|bEzb0wCfIglCCXPHjyoTXCcTPy97Kvo2pHPe7KaU468ea2ce';
+  const token = getSpaceSellerToken();
+  syncSpaceSellerTokenMirror();
 
   const btn=document.getElementById('ss-fetch-btn');
   btn.disabled=true; btn.innerHTML='<i class="ti ti-loader ss-spin"></i>Loading…';
   ['ss-kpis','ss-kpis-extra','ss-grid','ss-orders-card','ss-empty'].forEach(id=>ssShow(id,false));
-  ssStatus('loading','Fetching from SpaceSeller…');
+  ssStatus('loading','Polling tracked order IDs from SpaceSeller…');
 
   try {
-    /* Server-side proxy. ?all=1 paginates through every page on the server. */
-    const r = await fetch('/api/spaceseller/orders?all=1', {
+    /* SpaceSeller has no list endpoint. Poll each tracked order_id in parallel. */
+    const ids = (typeof ssTrackedIds === 'function') ? ssTrackedIds() : [];
+    if (!ids.length) {
+      ssStatus('ok','No tracked IDs yet — click Import IDs');
+      ssShow('ss-empty', true);
+      document.getElementById('ss-empty').innerHTML = `
+        <i class="ti ti-list-search" style="font-size:32px;color:var(--m1);display:block;margin-bottom:8px"></i>
+        <p style="color:var(--m1);font-size:13px;font-weight:600">No order IDs are being tracked yet.</p>
+        <p style="color:var(--m2);font-size:11px;margin-top:6px">SpaceSeller's public API doesn't support listing all orders. Click <strong>Import IDs</strong> in the Leads page to paste order IDs from your SpaceSeller dashboard, then sync.</p>
+        <button class="btn btn-p" style="margin-top:14px" onclick="if(typeof importOrderIds==='function') importOrderIds();"><i class="ti ti-cloud-upload"></i>Import order IDs</button>`;
+      return;
+    }
+    const r = await fetch('/api/spaceseller/orders?ids=' + encodeURIComponent(ids.join(',')), {
       headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
       cache: 'no-store'
     });
@@ -8052,18 +8139,17 @@ async function fetchSpaceSeller(){
     const all = Array.isArray(json.orders) ? json.orders : [];
 
     ssOrders = all;
-    /* Sync into leads array + persist so every other page sees the data */
     try{ leads = all; localStorage.setItem('ecospro_leads', JSON.stringify(all)); }catch(_){}
 
     if(!ssOrders.length){
-      ssStatus('ok','0 orders found');
+      ssStatus('error', `0 of ${json.requested} tracked IDs returned data`);
       ssShow('ss-empty',true);
-      document.getElementById('ss-empty').innerHTML='<p style="color:var(--m1);font-size:13px;font-weight:600">No orders on this account.</p>';
+      document.getElementById('ss-empty').innerHTML='<p style="color:var(--m1);font-size:13px;font-weight:600">None of the tracked IDs returned an order. They may not belong to your account, or the IDs are wrong.</p>';
       return;
     }
-    ssStatus('ok',`${ssOrders.length} orders loaded`);
+    const errCount = (json.errors || []).length;
+    ssStatus('ok', `${ssOrders.length} of ${json.requested} orders synced` + (errCount ? ` (${errCount} not found)` : ''));
     renderSSAll();
-    /* Re-render dependent pages so KPIs everywhere reflect the new data */
     try{ renderOverview(); }catch(_){}
     try{ if(typeof renderLeads==='function') renderLeads(); }catch(_){}
     try{ if(typeof renderCustomersPage==='function') renderCustomersPage(); }catch(_){}
@@ -8075,7 +8161,7 @@ async function fetchSpaceSeller(){
       <p style="color:var(--red);font-size:13px;font-weight:700">${xss(err.message)}</p>
       <p style="color:var(--m2);font-size:11px;margin-top:6px">Check the SpaceSeller token in Settings, or the proxy /api/spaceseller/orders.</p>`;
   } finally {
-    btn.disabled=false; btn.innerHTML='<i class="ti ti-refresh"></i>Fetch Orders';
+    btn.disabled=false; btn.innerHTML='<i class="ti ti-refresh"></i>Sync Tracked Orders';
   }
 }
 
@@ -10590,7 +10676,7 @@ let SS_STATUSES = readJSON('ecos_ss_statuses', null) || {
 };
 
 function ssGetToken(){
-  return (document.getElementById('ss-token')?.value || '4|bEzb0wCfIglCCXPHjyoTXCcTPy97Kvo2pHPe7KaU468ea2ce').trim();
+  return getSpaceSellerToken();
 }
 
 async function fetchSpaceSellerStatuses(){
@@ -10734,6 +10820,8 @@ async function submitNewOrder(){
     if(!wrapped?.success || !data?.success){ throw new Error(data?.error || data?.message || wrapped?.error || `HTTP ${upstreamStatus}`); }
 
     const d = data.data || {};
+    /* Auto-track the new order_id so future Sync calls poll it */
+    if (d.order_id && typeof ssAddTrackedIds === 'function') ssAddTrackedIds([d.order_id]);
     okEl.innerHTML = `<strong>✓ Order created</strong> · ID <code>${xss(String(d.order_id||''))}</code> · UUID <code>${xss(String(d.uuid||'').slice(0,12)+'…')}</code> · Status <strong>${xss(statusLabel(d.status,''+ ''))}</strong>`;
     okEl.style.display='';
     showToast('Order #'+d.order_id+' created ✓');
@@ -13161,23 +13249,21 @@ try {
   }
 } catch(_){}
 
-/* Auto-sync SpaceSeller on boot (silent — don\'t block UI). */
-(async function bootAutoSync(){
+/* Helper: poll all tracked order IDs (silent — no UI blocking). */
+async function ssSilentSync(){
   try {
-    if (typeof fetchSpaceSellerStatuses === 'function') await fetchSpaceSellerStatuses();
-  } catch(_){}
-  try {
-    const tokenEl = document.getElementById('ss-token');
-    const token = (tokenEl ? tokenEl.value : '').trim() || '4|bEzb0wCfIglCCXPHjyoTXCcTPy97Kvo2pHPe7KaU468ea2ce';
-    const r = await fetch('/api/spaceseller/orders?all=1', {
+    const ids = (typeof ssTrackedIds === 'function') ? ssTrackedIds() : [];
+    if (!ids.length) return null;
+    const token = getSpaceSellerToken();
+    const r = await fetch('/api/spaceseller/orders?ids=' + encodeURIComponent(ids.join(',')), {
       headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
       cache: 'no-store'
     });
-    if (!r.ok) return;
+    if (!r.ok) return null;
     const json = await r.json();
-    if (!json || !json.success) return;
+    if (!json || !json.success) return null;
     const all = Array.isArray(json.orders) ? json.orders : [];
-    if (!all.length) return;
+    if (!all.length) return json;
     ssOrders = all;
     leads = all;
     try { localStorage.setItem('ecospro_leads', JSON.stringify(all)); } catch(_){}
@@ -13185,29 +13271,47 @@ try {
     try { if (typeof renderLeads === 'function' && cpage === 'leads') renderLeads(); } catch(_){}
     try { if (typeof renderSSAll === 'function' && cpage === 'spaceseller') renderSSAll(); } catch(_){}
     try { if (typeof renderCustomersPage === 'function' && cpage === 'customers') renderCustomersPage(); } catch(_){}
-    try { showToast('✓ ' + all.length + ' orders synced from SpaceSeller'); } catch(_){}
-  } catch(_){}
+    return json;
+  } catch(_){ return null; }
+}
+
+/* Throttle the silent sync so triggers don't pile up — at most one fetch per 25s. */
+let _ssLastSync = 0;
+async function ssSilentSyncThrottled(force){
+  const now = Date.now();
+  if (!force && now - _ssLastSync < 25000) return null;
+  _ssLastSync = now;
+  return ssSilentSync();
+}
+
+/* Auto-sync on boot (statuses + tracked orders). */
+(async function bootAutoSync(){
+  try { if (typeof fetchSpaceSellerStatuses === 'function') await fetchSpaceSellerStatuses(); } catch(_){}
+  const result = await ssSilentSync();
+  if (result && result.count > 0) {
+    try { showToast('\u2713 ' + result.count + ' orders synced from SpaceSeller'); } catch(_){}
+  }
 })();
 
-/* Periodic resync — every 5 minutes pull fresh SpaceSeller data */
-setInterval(() => {
-  if (document.hidden) return;
-  fetch('/api/spaceseller/orders?all=1', {
-    headers: { 'Authorization': 'Bearer ' + ((document.getElementById('ss-token')?.value||'').trim() || '4|bEzb0wCfIglCCXPHjyoTXCcTPy97Kvo2pHPe7KaU468ea2ce'),
-               'Accept': 'application/json' },
-    cache: 'no-store'
-  }).then(r => r.ok ? r.json() : null).then(j => {
-    if (!j || !j.success) return;
-    const all = Array.isArray(j.orders) ? j.orders : [];
-    ssOrders = all;
-    leads = all;
-    try { localStorage.setItem('ecospro_leads', JSON.stringify(all)); } catch(_){}
-    if (cpage === 'overview' && typeof renderOverview === 'function') renderOverview();
-    else if (cpage === 'leads' && typeof renderLeads === 'function') renderLeads();
-    else if (cpage === 'spaceseller' && typeof renderSSAll === 'function') renderSSAll();
-    else if (cpage === 'customers' && typeof renderCustomersPage === 'function') renderCustomersPage();
-  }).catch(()=>{});
-}, 300000);
+/* Periodic resync — every 90 seconds poll tracked orders while tab is visible. */
+setInterval(() => { if (!document.hidden) ssSilentSyncThrottled(); }, 90000);
+
+/* Resync immediately when the tab regains focus or visibility. */
+window.addEventListener('focus', () => ssSilentSyncThrottled());
+document.addEventListener('visibilitychange', () => { if (!document.hidden) ssSilentSyncThrottled(); });
+
+/* Resync whenever the user lands on a page that displays order data. */
+(function hookGoPageForSync(){
+  if (typeof window.goPage !== 'function') return;
+  const orig = window.goPage;
+  window.goPage = function(name, el){
+    const r = orig.apply(this, arguments);
+    if (['overview','leads','spaceseller','customers'].includes(name)) {
+      ssSilentSyncThrottled();
+    }
+    return r;
+  };
+})();
 
 </script>
 </body>
