@@ -13249,33 +13249,58 @@ try {
   }
 } catch(_){}
 
-/* Helper: poll all tracked order IDs (silent — no UI blocking). */
+/* Helper: poll all tracked order IDs in client-side chunks.
+   Why chunks: a single big request to /api/spaceseller/orders?ids=... would
+   exceed Vercel's 10s function timeout once we cross ~50 ids. We slice into
+   chunks of 25 and gap them with 200 ms to also avoid SpaceSeller's HTTP 429
+   rate-limit. Result: predictable, never overwrites cache with partial data. */
+
+let _ssSyncInFlight = false;
 async function ssSilentSync(){
+  if (_ssSyncInFlight) return null;
+  _ssSyncInFlight = true;
   try {
     const ids = (typeof ssTrackedIds === 'function') ? ssTrackedIds() : [];
     if (!ids.length) return null;
     const token = getSpaceSellerToken();
-    const r = await fetch('/api/spaceseller/orders?ids=' + encodeURIComponent(ids.join(',')), {
-      headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
-      cache: 'no-store'
-    });
-    if (!r.ok) return null;
-    const json = await r.json();
-    if (!json || !json.success) return null;
-    const all = Array.isArray(json.orders) ? json.orders : [];
-    if (!all.length) return json;
-    ssOrders = all;
-    leads = all;
-    try { localStorage.setItem('ecospro_leads', JSON.stringify(all)); } catch(_){}
-    try { if (typeof renderOverview === 'function' && cpage === 'overview') renderOverview(); } catch(_){}
-    try { if (typeof renderLeads === 'function' && cpage === 'leads') renderLeads(); } catch(_){}
-    try { if (typeof renderSSAll === 'function' && cpage === 'spaceseller') renderSSAll(); } catch(_){}
-    try { if (typeof renderCustomersPage === 'function' && cpage === 'customers') renderCustomersPage(); } catch(_){}
-    return json;
-  } catch(_){ return null; }
+    const chunkSize = 25;
+    const merged = [];
+    const errors = [];
+    for (let i = 0; i < ids.length; i += chunkSize) {
+      const chunk = ids.slice(i, i + chunkSize);
+      let r;
+      try {
+        r = await fetch('/api/spaceseller/orders?ids=' + encodeURIComponent(chunk.join(',')), {
+          headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
+          cache: 'no-store'
+        });
+      } catch(e) { errors.push({chunkStart:i, error:e.message}); continue; }
+      if (!r.ok) { errors.push({chunkStart:i, status:r.status}); continue; }
+      const json = await r.json().catch(()=>null);
+      if (json?.orders?.length) merged.push(...json.orders);
+      if (json?.errors?.length) errors.push(...json.errors);
+      if (merged.length) {
+        try {
+          const prior = JSON.parse(localStorage.getItem('ecospro_leads')||'[]');
+          const byId = new Map();
+          prior.forEach(o => { const k = o.order_id || o.id; if (k) byId.set(String(k), o); });
+          merged.forEach(o => { const k = o.order_id || o.id; if (k) byId.set(String(k), o); });
+          const combined = [...byId.values()];
+          ssOrders = combined; leads = combined;
+          localStorage.setItem('ecospro_leads', JSON.stringify(combined));
+          if (typeof renderOverview === 'function' && cpage === 'overview') renderOverview();
+          if (typeof renderLeads === 'function' && cpage === 'leads') renderLeads();
+          if (typeof renderSSAll === 'function' && cpage === 'spaceseller') renderSSAll();
+          if (typeof renderCustomersPage === 'function' && cpage === 'customers') renderCustomersPage();
+        } catch(_){}
+      }
+      await new Promise(rr => setTimeout(rr, 200));
+    }
+    return { count: merged.length, requested: ids.length, errors };
+  } catch(_) { return null; }
+  finally { _ssSyncInFlight = false; }
 }
 
-/* Throttle the silent sync so triggers don't pile up — at most one fetch per 25s. */
 let _ssLastSync = 0;
 async function ssSilentSyncThrottled(force){
   const now = Date.now();
@@ -13284,7 +13309,6 @@ async function ssSilentSyncThrottled(force){
   return ssSilentSync();
 }
 
-/* Auto-sync on boot (statuses + tracked orders). */
 (async function bootAutoSync(){
   try { if (typeof fetchSpaceSellerStatuses === 'function') await fetchSpaceSellerStatuses(); } catch(_){}
   const result = await ssSilentSync();
@@ -13293,14 +13317,10 @@ async function ssSilentSyncThrottled(force){
   }
 })();
 
-/* Periodic resync — every 90 seconds poll tracked orders while tab is visible. */
 setInterval(() => { if (!document.hidden) ssSilentSyncThrottled(); }, 90000);
-
-/* Resync immediately when the tab regains focus or visibility. */
 window.addEventListener('focus', () => ssSilentSyncThrottled());
 document.addEventListener('visibilitychange', () => { if (!document.hidden) ssSilentSyncThrottled(); });
 
-/* Resync whenever the user lands on a page that displays order data. */
 (function hookGoPageForSync(){
   if (typeof window.goPage !== 'function') return;
   const orig = window.goPage;
