@@ -1891,7 +1891,7 @@ tr.clickable:hover{background:var(--s2)!important}
       <button class="hdr-icon-btn hdr-search-btn" onclick="openGSearch()" title="Search (Ctrl+K)" style="background:var(--s2);border-color:var(--bd)">
         <i class="ti ti-search"></i>Search<kbd style="background:var(--s1);border:1px solid var(--bd);border-radius:5px;padding:2px 6px;font-size:10.5px;font-weight:700;color:var(--m2);margin-left:5px">Ctrl+K</kbd>
       </button>
-      <button class="hdr-icon-btn" id="notif-bell-btn" onclick="toggleNotifDropdown()" title="Notifications" style="background:var(--s2);border-color:var(--bd);position:relative">
+      <div class="hdr-icon-btn" id="notif-bell-btn" role="button" tabindex="0" onclick="toggleNotifDropdown()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleNotifDropdown();}" title="Notifications" style="background:var(--s2);border:1px solid var(--bd);position:relative;cursor:pointer;display:inline-flex;align-items:center;justify-content:center">
         <i class="ti ti-bell"></i>
         <span class="notif-badge" id="notif-badge" style="display:none">0</span>
         <div class="notif-dropdown" id="notif-dropdown" onclick="event.stopPropagation()">
@@ -1901,7 +1901,7 @@ tr.clickable:hover{background:var(--s2)!important}
           </div>
           <div class="notif-list" id="notif-list"></div>
         </div>
-      </button>
+      </div>
       <button class="theme-btn" onclick="toggleTheme()" title="Toggle theme"><i class="ti ti-moon" id="ticon"></i></button>
     </div>
   </div>
