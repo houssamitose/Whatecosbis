@@ -13338,8 +13338,37 @@ async function ssSilentSyncThrottled(force){
   return ssSilentSync();
 }
 
+/* Try the Supabase-cached endpoint first — instant, no SpaceSeller round-trip. */
+async function loadFromServerCache(){
+  try {
+    const r = await fetch('/api/leads?limit=5000', { cache: 'no-store' });
+    if (!r.ok) return false;
+    const j = await r.json();
+    if (!j?.success || !Array.isArray(j.orders) || !j.orders.length) return false;
+    ssOrders = j.orders;
+    leads = j.orders;
+    try { localStorage.setItem('ecospro_leads', JSON.stringify(j.orders)); } catch(_){}
+    if (typeof renderOverview === 'function' && cpage === 'overview') renderOverview();
+    if (typeof renderLeads === 'function' && cpage === 'leads') renderLeads();
+    if (typeof renderSSAll === 'function' && cpage === 'spaceseller') renderSSAll();
+    if (typeof renderCustomersPage === 'function' && cpage === 'customers') renderCustomersPage();
+    return true;
+  } catch(_) { return false; }
+}
+
+/* Kick off a server-side sync that refreshes the Supabase cache. Fire-and-forget. */
+function triggerServerSync(){
+  try { fetch('/api/leads/sync', { method:'POST', cache:'no-store' }).catch(()=>{}); } catch(_){}
+}
+
 (async function bootAutoSync(){
   try { if (typeof fetchSpaceSellerStatuses === 'function') await fetchSpaceSellerStatuses(); } catch(_){}
+  const fromCache = await loadFromServerCache();
+  if (fromCache) {
+    triggerServerSync();
+    try { showToast('\u2713 ' + leads.length + ' orders loaded from cache'); } catch(_){}
+    return;
+  }
   const result = await ssSilentSync();
   if (result && result.count > 0) {
     try { showToast('\u2713 ' + result.count + ' orders synced from SpaceSeller'); } catch(_){}
