@@ -2759,6 +2759,19 @@ tr.clickable:hover{background:var(--s2)!important}
             <input type="password" id="acc-newpwd2" placeholder="••••••••">
           </div>
           <button class="sbtn sbtn-p" onclick="saveAccount()"><i class="ti ti-check"></i>Save changes</button>
+
+          <div class="settings-divider"></div>
+          <div class="settings-section-title">Notifications</div>
+          <div class="settings-section-sub">Configure when the bell icon pings you.</div>
+          <div class="srow" style="margin-top:8px">
+            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Alerte stock faible (≤ N pi&egrave;ces)</label>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <input type="number" min="0" step="1" id="lowstock-threshold" class="finput" style="max-width:120px" value="40">
+              <button class="sbtn sbtn-p" onclick="(function(){const v=parseInt(document.getElementById('lowstock-threshold').value||'40',10);setLowStockThreshold(v);showToast('Seuil sauvegard&eacute; : '+v+' pi&egrave;ces');})()"><i class="ti ti-check"></i>Sauvegarder</button>
+              <span style="font-size:11px;color:var(--m2)">D&eacute;faut : 40. Toute commande active sous ce seuil d&eacute;clenchera une notification cloche.</span>
+            </div>
+          </div>
+
           <div class="settings-divider"></div>
           <div class="settings-section-title">Data backup</div>
           <div class="settings-section-sub">All your data is auto-saved to this browser. Export a full backup file you can re-import anywhere.</div>
@@ -4127,6 +4140,8 @@ function renderAccount(){
   document.getElementById('acc-role').value = ROLE_LABEL(u.role);
   document.getElementById('acc-newpwd').value = '';
   document.getElementById('acc-newpwd2').value = '';
+  const ls = document.getElementById('lowstock-threshold');
+  if (ls) ls.value = (typeof getLowStockThreshold==='function') ? getLowStockThreshold() : 40;
 }
 function saveAccount(){
   const u = getCurrentUser(); if(!u) return;
@@ -6952,7 +6967,10 @@ if(!products){  products = [
   saveProducts();
 }
 
-function saveProducts(){ LS.setItem('ecopro_products', JSON.stringify(products)); }
+function saveProducts(){
+  LS.setItem('ecopro_products', JSON.stringify(products));
+  try { checkLowStockNotifs(); } catch(_){}
+}
 
 let activeProdId=null, activeAvId=null;
 
@@ -11852,6 +11870,61 @@ function pushNotif(n){
   saveNotifs();
   updateNotifBadge();
 }
+
+/* ── LOW-STOCK NOTIFICATIONS ────────────────────────────────────
+   Threshold is configurable in Settings → Account (saved in localStorage as ecos_lowstock_threshold).
+   Default: 40 pieces. Scan active products on boot + after every product sync. */
+function getLowStockThreshold(){
+  const v = parseInt(localStorage.getItem('ecos_lowstock_threshold')||'40', 10);
+  return Number.isFinite(v) && v > 0 ? v : 40;
+}
+function setLowStockThreshold(n){
+  const v = Math.max(0, parseInt(n, 10) || 40);
+  localStorage.setItem('ecos_lowstock_threshold', String(v));
+  checkLowStockNotifs();
+  return v;
+}
+function checkLowStockNotifs(){
+  if (typeof products === 'undefined' || !Array.isArray(products)) return;
+  const threshold = getLowStockThreshold();
+  /* Determine which products are currently low */
+  const lowNow = new Map();
+  products.forEach(p => {
+    if ((p.status || 'active') !== 'active') return;
+    const stock = parseInt(p.stock || 0, 10);
+    if (stock <= threshold) lowNow.set(p.id, { name: p.name, stock });
+  });
+  /* Add notifications for new low-stock products */
+  lowNow.forEach((info, pid) => {
+    const id = 'lowstock_' + pid;
+    const existing = notifs.find(n => n.id === id);
+    if (!existing) {
+      notifs.unshift({
+        id,
+        type: 'warning',
+        icon: 'package',
+        message: `Stock faible : ${info.name} (${info.stock} pièces ≤ ${threshold})`,
+        target: 'products',
+        ts: Date.now(),
+        read: false,
+      });
+    } else if (existing.message && !existing.message.includes(`(${info.stock} pi`)) {
+      /* Stock count changed but still below threshold — refresh the message text */
+      existing.message = `Stock faible : ${info.name} (${info.stock} pièces ≤ ${threshold})`;
+      existing.ts = Date.now();
+      existing.read = false;
+    }
+  });
+  /* Auto-remove notifications for products that are no longer low */
+  notifs = notifs.filter(n => {
+    if (!n.id || !n.id.startsWith('lowstock_')) return true;
+    const pid = n.id.slice(9);
+    return lowNow.has(pid);
+  });
+  saveNotifs();
+  updateNotifBadge();
+  if (document.getElementById('notif-dropdown')?.classList.contains('open')) renderNotifList();
+}
 function markAllNotifsRead(){
   notifs.forEach(n=>n.read=true);
   saveNotifs();
@@ -13330,9 +13403,7 @@ async function ssSilentSync(){
       try {
         const headers = { 'Accept': 'application/json' };
         if (token) headers['Authorization'] = 'Bearer ' + token;
-        r = await fetch('/api/spaceseller/orders?ids=' + encodeURIComponent(chunk.join(',')), {
-          headers, cache: 'no-store'
-        });
+        r = await fetch('/api/spaceseller/orders?ids=' + encodeURIComponent(chunk.join(',')), { headers, cache:'no-store' });
       } catch(e) { errors.push({chunkStart:i, error:e.message}); continue; }
       if (!r.ok) { errors.push({chunkStart:i, status:r.status}); continue; }
       const json = await r.json().catch(()=>null);
@@ -13368,14 +13439,11 @@ async function ssSilentSyncThrottled(force){
   return ssSilentSync();
 }
 
-/* Try the Supabase-cached endpoint first — instant, no SpaceSeller round-trip. */
-/* Global Escape handler: closes any open modal/overlay. */
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   const opened = document.querySelectorAll('.moverlay.open, .script-modal-overlay.open');
   if (!opened.length) return;
   opened.forEach(el => el.classList.remove('open'));
-  /* Also close global search if it's open */
   document.getElementById('gsearch-overlay')?.classList.remove('open');
 }, true);
 
@@ -13402,6 +13470,7 @@ function triggerServerSync(){
 
 (async function bootAutoSync(){
   try { if (typeof fetchSpaceSellerStatuses === 'function') await fetchSpaceSellerStatuses(); } catch(_){}
+  try { checkLowStockNotifs(); } catch(_){}
   const fromCache = await loadFromServerCache();
   if (fromCache) {
     triggerServerSync();
@@ -13425,6 +13494,9 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) ssSi
     const r = orig.apply(this, arguments);
     if (['overview','leads','spaceseller','customers'].includes(name)) {
       ssSilentSyncThrottled();
+    }
+    if (name === 'products') {
+      try { checkLowStockNotifs(); } catch(_){}
     }
     return r;
   };
