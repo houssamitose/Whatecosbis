@@ -4572,10 +4572,19 @@ function ptag(v){ const m=PRI[v]||{c:'tgr',l:v}; return `<span class="tag ${m.c}
 function xss(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function fmtDate(d){ return new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }
 
+/* Throttled toast — collapses bursts of the same message and avoids stacking. */
+const _toastDedupe = new Map();
 function showToast(msg){
-  const t=document.getElementById('toast');
-  t.textContent=msg; t.classList.add('show');
-  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2800);
+  const t = document.getElementById('toast'); if (!t) return;
+  /* Suppress an identical toast fired within the last 1500 ms */
+  const now = Date.now();
+  const last = _toastDedupe.get(msg) || 0;
+  if (now - last < 1500) return;
+  _toastDedupe.set(msg, now);
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove('show'), 2800);
 }
 
 /* ═══════════════════════════════════════
@@ -5766,7 +5775,7 @@ function goPage(n,el){
     ? (productMenuView==='test'?'To Test':productMenuView==='inactive'?'Inactive Product':productMenuView==='off'?'Product Off':'Active Products')
     : C[n]||'';
   /* Safely update Add button label if present (button removed from topbar in patch31) */
-  try{ const _albl = document.getElementById('albl'); if(_albl) _albl.textContent = n==='tasks'?'Add Task':n==='products'?'Add Product':n==='sprints'?'New Sprint':'Add'; }catch(_){}
+  try{ const _albl = document.getElementById('albl'); if(_albl) _albl.textContent = n==='tasks'?'Add Task':n==='sprints'?'New Sprint':'Add'; }catch(_){}
   cpage=n;
   /* Always scroll the content area back to top so the page header is visible immediately */
   try{ const _c = document.querySelector('.content'); if(_c) _c.scrollTop = 0; window.scrollTo(0, 0); }catch(_){}
@@ -5792,22 +5801,16 @@ function goPage(n,el){
 
 function openAdd(){
   if(cpage==='tasks') openTaskModal(null);
-  else if(cpage==='products') openAddProductModal();
+  else if(cpage==='products') { try { showToast('Products are managed in SpaceSeller — no manual creation in CRM'); } catch(_){} }
   else if(cpage==='sprints') openSprintModal();
   else if(cpage==='library') openLibModal(libMenuView);
 }
 
+/* DISABLED — products are managed in SpaceSeller (Mediaplus) only.
+   The CRM doesn't allow product creation to keep SKUs perfectly in sync.
+   Kept as a no-op so any stray onclick="openAddProductModal()" doesn't throw. */
 function openAddProductModal(){
-  const isTest = productMenuView==='test';
-  document.getElementById('ap-title').textContent = isTest ? 'Add Product to Test' : 'Add Active Product';
-  document.getElementById('ap-sub').textContent = isTest ? 'This product will appear in "To Test"' : 'This product will appear in "Active Products"';
-  document.getElementById('ap-status').value = productMenuView||'active';
-  document.getElementById('ap-name').value='';
-  document.getElementById('ap-emoji').value='';
-  document.getElementById('ap-price').value='';
-  document.getElementById('ap-category').value='';
-  document.getElementById('modal-add-product').classList.add('open');
-  setTimeout(()=>document.getElementById('ap-name').focus(),60);
+  try { showToast('Add a product in your SpaceSeller catalog first — it syncs into the CRM automatically'); } catch(_){}
 }
 
 function closeAddProductModal(){
@@ -6964,10 +6967,11 @@ function renderProducts(){
   const filtered = products.filter(p=>(p.status||'active')===view);
 
   if(!filtered.length){
+    const label = view==='test'?'products to test':view==='inactive'?'inactive products':view==='off'?'products off':'active products';
     rail.innerHTML = `<div style="width:100%;padding:40px 20px;text-align:center;color:var(--m2)">
       <i class="ti ti-${view==='test'?'flask':view==='inactive'?'pause':view==='off'?'circle-off':'box'}" style="font-size:32px;display:block;margin-bottom:10px;opacity:.4"></i>
-      <p style="font-size:13px;font-weight:600">No ${view==='test'?'products to test':view==='inactive'?'inactive products':view==='off'?'products off':'active products'} yet</p>
-      <p style="font-size:11px;margin-top:4px">Click <strong>Add Product</strong> to create one</p>
+      <p style="font-size:13px;font-weight:600">No ${xss(label)} yet</p>
+      <p style="font-size:11.5px;margin-top:6px;line-height:1.6;max-width:380px;margin-left:auto;margin-right:auto">Les produits sont synchronisés depuis SpaceSeller (page Settings &rarr; Catalog). Pour qu'un produit apparaisse ici, son SKU doit correspondre &agrave; un produit r&eacute;f&eacute;renc&eacute; chez Mediaplus.</p>
     </div>`;
     renderProductPanel();
     return;
@@ -7028,15 +7032,41 @@ function changeProductStatus(pid, newStatus){
   renderProducts();
   showToast(`${p.name} → ${to} ✓`);
 }
+/* Soft delete: marks the product as deleted with a timestamp instead of
+   wiping it. Past orders that reference the product still resolve, and an
+   admin can restore via the Products → Off filter or DB query.
+   Includes a 6-second "Undo" via toast. */
+let _lastDeletedProduct = null;
 function deleteProductForever(pid){
-  const p=products.find(x=>x.id===pid); if(!p) return;
-  if(!confirm(`Remove "${p.name}" definitively?\nThis cannot be undone.`)) return;
-  products = products.filter(x=>x.id!==pid);
+  const p = products.find(x=>x.id===pid);
+  if (!p) return;
+  if (!confirm(`Move "${p.name}" to deleted? (You can undo within 6 seconds)`)) return;
+  /* Capture previous state for undo */
+  _lastDeletedProduct = { id: p.id, prevStatus: p.status || 'active', prevDeletedAt: p.deleted_at || null };
+  p.status = 'off';
+  p.deleted_at = new Date().toISOString();
+  p.deleted_by = (typeof getCurrentUser==='function' ? (getCurrentUser()?.email||null) : null);
   saveProducts();
-  if(activeProdId===pid){ activeProdId=null; activeAvId=null; }
+  if (activeProdId===pid) { activeProdId=null; activeAvId=null; }
   renderProducts();
-  showToast(`${p.name} removed`);
+  showToast(`${p.name} deleted — undo via console: undoDeleteProduct()`);
+  /* Auto-clear undo capability after 6s */
+  setTimeout(() => { _lastDeletedProduct = null; }, 6000);
 }
+/* Restore the last soft-deleted product (callable from console or a future undo button). */
+window.undoDeleteProduct = function(){
+  if (!_lastDeletedProduct) { try{ showToast('Nothing to undo'); }catch(_){} return false; }
+  const p = products.find(x=>x.id===_lastDeletedProduct.id);
+  if (!p) return false;
+  p.status = _lastDeletedProduct.prevStatus;
+  p.deleted_at = _lastDeletedProduct.prevDeletedAt;
+  delete p.deleted_by;
+  _lastDeletedProduct = null;
+  saveProducts();
+  renderProducts();
+  showToast(`${p.name} restored`);
+  return true;
+};
 
 function renderProductPanel(){
   const panel = document.getElementById('prod-panel');
@@ -13339,6 +13369,16 @@ async function ssSilentSyncThrottled(force){
 }
 
 /* Try the Supabase-cached endpoint first — instant, no SpaceSeller round-trip. */
+/* Global Escape handler: closes any open modal/overlay. */
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  const opened = document.querySelectorAll('.moverlay.open, .script-modal-overlay.open');
+  if (!opened.length) return;
+  opened.forEach(el => el.classList.remove('open'));
+  /* Also close global search if it's open */
+  document.getElementById('gsearch-overlay')?.classList.remove('open');
+}, true);
+
 async function loadFromServerCache(){
   try {
     const r = await fetch('/api/leads?limit=5000', { cache: 'no-store' });
@@ -13356,7 +13396,6 @@ async function loadFromServerCache(){
   } catch(_) { return false; }
 }
 
-/* Kick off a server-side sync that refreshes the Supabase cache. Fire-and-forget. */
 function triggerServerSync(){
   try { fetch('/api/leads/sync', { method:'POST', cache:'no-store' }).catch(()=>{}); } catch(_){}
 }
