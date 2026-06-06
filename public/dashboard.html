@@ -2198,7 +2198,7 @@ tr.clickable:hover{background:var(--s2)!important}
         <div class="ss-topbar-r">
           <!-- Hidden input keeps every legacy reader (#ss-token .value) working. The real token is managed in Settings → API Keys. -->
           <input type="hidden" id="ss-token" value="">
-          <button class="btn" style="border:1px solid var(--bd);background:var(--s2)" onclick="_goSettings('api')" title="Manage the SpaceSeller token in Settings → API Keys"><i class="ti ti-key"></i>Token in Settings</button>
+          <button class="btn admin-only-el" style="border:1px solid var(--bd);background:var(--s2)" onclick="_goSettings('api')" title="Manage the SpaceSeller token in Settings → API Keys"><i class="ti ti-key"></i>Token in Settings</button>
           <button class="btn" style="border:1px solid var(--bd);background:var(--s2)" onclick="importOrderIds()" title="Paste order IDs from your SpaceSeller dashboard"><i class="ti ti-cloud-upload"></i>Import IDs</button>
           <button class="btn btn-p" id="ss-fetch-btn" onclick="fetchSpaceSeller()">
             <i class="ti ti-refresh"></i>Sync Tracked Orders
@@ -2726,7 +2726,7 @@ tr.clickable:hover{background:var(--s2)!important}
           <div class="settings-tab" data-stab="roles" onclick="goSettingsTab('roles',this)">
             <i class="ti ti-shield-check"></i>Roles &amp; Permissions
           </div>
-          <div class="settings-tab" data-stab="api" onclick="goSettingsTab('api',this)">
+          <div class="settings-tab admin-only-tab" data-stab="api" onclick="goSettingsTab('api',this)">
             <i class="ti ti-key"></i>API Keys
           </div>
         </div>
@@ -2797,8 +2797,8 @@ tr.clickable:hover{background:var(--s2)!important}
           <div id="roles-wrap"></div>
         </div>
 
-        <!-- API KEYS -->
-        <div class="settings-panel" id="spanel-api">
+        <!-- API KEYS — admin only -->
+        <div class="settings-panel admin-only-panel" id="spanel-api">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
             <div>
               <div class="settings-section-title">API Keys</div>
@@ -6418,20 +6418,23 @@ function ldSetStatus(type,msg){
   e.className='ss-status-'+type; e.innerHTML=ic+' '+msg; e.style.display='';
 }
 
-/* Read the SpaceSeller bearer token from the centralized Settings API-keys store.
-   Falls back to the existing #ss-token input value, then to the bundled default token. */
+/* Read the SpaceSeller bearer token — ONLY for admins.
+   Non-admins return empty string; the server-side proxy then falls back to
+   process.env.SPACESELLER_TOKEN. This keeps the secret off non-admin browsers. */
 function getSpaceSellerToken(){
   try {
+    const u = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
+    if (!u || u.role !== 'admin') return '';
     const raw = LS.getItem('ecos_api_keys');
     if (raw) {
       const list = JSON.parse(raw) || [];
       const k = list.find(x => x.id === 'k_spaceseller');
       if (k && k.value && k.value.trim()) return k.value.trim();
     }
+    const el = document.getElementById('ss-token');
+    if (el && el.value && el.value.trim()) return el.value.trim();
   } catch(_){}
-  const el = document.getElementById('ss-token');
-  if (el && el.value && el.value.trim()) return el.value.trim();
-  return '4|bEzb0wCfIglCCXPHjyoTXCcTPy97Kvo2pHPe7KaU468ea2ce';
+  return '';
 }
 /* Keep the hidden #ss-token mirror in sync so any legacy code that reads it still works. */
 function syncSpaceSellerTokenMirror(){
@@ -10604,6 +10607,14 @@ function setRolePerm(cb){
 /* Hook the Settings dispatch */
 const _oldGoSettingsTab = typeof goSettingsTab==='function' ? goSettingsTab : null;
 function goSettingsTabV2(name, el){
+  /* Admin-gated tabs: 'api' (API keys, tokens) can only be opened by admins. */
+  if (name === 'api') {
+    const u = getCurrentUser();
+    if (!u || u.role !== 'admin') {
+      try { showToast('Admin only'); } catch(_){}
+      return;
+    }
+  }
   try { if(_oldGoSettingsTab) _oldGoSettingsTab(name, el); }
   catch(e){ console.warn('legacy goSettingsTab threw, recovering:',e);
     document.querySelectorAll('.settings-tab').forEach(t=>t.classList.remove('active'));
@@ -10616,25 +10627,42 @@ function goSettingsTabV2(name, el){
 }
 window.goSettingsTab = goSettingsTabV2;
 
-/* Extended applyAuthUI: hide data-perm elements as well */
+/* Extended applyAuthUI: hide data-perm elements + admin-only API surfaces. */
 const _oldApplyAuthUI = typeof applyAuthUI==='function' ? applyAuthUI : null;
 function applyAuthUIV2(){
   if(_oldApplyAuthUI) try{ _oldApplyAuthUI(); }catch(e){ console.warn('legacy applyAuthUI failed',e); }
+  const _u = getCurrentUser();
+  const isAdmin = !!(_u && _u.role==='admin');
+
   /* Show transcribe edit button only for admins */
   const teb = document.getElementById('transcribe-edit-btn');
-  if(teb){
-    const _u = getCurrentUser();
-    teb.style.display = (_u && _u.role==='admin') ? '' : 'none';
-  }
+  if(teb) teb.style.display = isAdmin ? '' : 'none';
   const veb = document.getElementById('veo-edit-btn');
-  if(veb){
-    const _u = getCurrentUser();
-    veb.style.display = (_u && _u.role==='admin') ? '' : 'none';
-  }
+  if(veb) veb.style.display = isAdmin ? '' : 'none';
+
   document.querySelectorAll('[data-perm]').forEach(el=>{
     const action = el.getAttribute('data-perm');
     el.style.display = userCanV2(action) ? '' : 'none';
   });
+
+  /* API surface — admin only.
+     Three places to gate: the Settings → API Keys tab, the panel itself,
+     and any inline shortcut button that links into it. */
+  document.querySelectorAll('.admin-only-tab, .admin-only-panel, .admin-only-el').forEach(el=>{
+    el.style.display = isAdmin ? '' : 'none';
+  });
+  /* If a non-admin is currently sitting on the API panel, kick them back to Account. */
+  if (!isAdmin) {
+    const apiPanel = document.getElementById('spanel-api');
+    if (apiPanel && apiPanel.classList.contains('active')) {
+      apiPanel.classList.remove('active');
+      const acct = document.getElementById('spanel-account');
+      if (acct) acct.classList.add('active');
+      document.querySelectorAll('.settings-tab').forEach(t=>t.classList.remove('active'));
+      const acctTab = document.querySelector('.settings-tab[data-stab="account"]');
+      if (acctTab) acctTab.classList.add('active');
+    }
+  }
 }
 window.applyAuthUI = applyAuthUIV2;
 
@@ -13270,9 +13298,10 @@ async function ssSilentSync(){
       const chunk = ids.slice(i, i + chunkSize);
       let r;
       try {
+        const headers = { 'Accept': 'application/json' };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
         r = await fetch('/api/spaceseller/orders?ids=' + encodeURIComponent(chunk.join(',')), {
-          headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
-          cache: 'no-store'
+          headers, cache: 'no-store'
         });
       } catch(e) { errors.push({chunkStart:i, error:e.message}); continue; }
       if (!r.ok) { errors.push({chunkStart:i, status:r.status}); continue; }
