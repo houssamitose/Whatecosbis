@@ -5941,9 +5941,12 @@ function computeProductPerf(p){
         (p.trackingCode && (pp.sku||'').toUpperCase().includes(p.trackingCode.toUpperCase())) ||
         (pp.name||'').toLowerCase().includes(p.name.toLowerCase().split(' ')[0])
       ));
-  const ordered  = prodLeads.length;
-  const confirmed= prodLeads.filter(o=>['CONFIRMED','PAID'].includes(o.order_status?.code)).length;
-  const delivered= prodLeads.filter(o=>o.delivery_status?.code==='P_DELIVERED').length;
+  /* Prefer the metrics scraped from SpaceSeller dashboard if available
+     (the API doesn't return products[] in order details, so order-side filtering returns 0). */
+  const hasScrapedMetrics = p.metrics && (p.metrics.ordered || p.metrics.confirmed || p.metrics.delivered);
+  const ordered  = hasScrapedMetrics ? (p.metrics.ordered || 0) : prodLeads.length;
+  const confirmed= hasScrapedMetrics ? (p.metrics.confirmed || 0) : prodLeads.filter(o=>['CONFIRMED','PAID'].includes(o.order_status?.code)).length;
+  const delivered= hasScrapedMetrics ? (p.metrics.delivered || 0) : prodLeads.filter(o=>o.delivery_status?.code==='P_DELIVERED').length;
   const confirmRate = ordered>0 ? Math.round(confirmed/ordered*100) : 0;
   const deliverRate = confirmed>0 ? Math.round(delivered/confirmed*100) : 0;
   const revenue = delivered * (p.price||0);
