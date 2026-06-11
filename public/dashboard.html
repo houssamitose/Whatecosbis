@@ -2179,6 +2179,16 @@ tr.clickable:hover{background:var(--s2)!important}
 
     <!-- ══ PRODUCTS ══ -->
     <div class="page" id="page-products">
+      <!-- Toolbar: filters + Add Product button -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+        <div style="display:flex;gap:6px;flex-wrap:wrap" id="prod-tabs">
+          <button class="btn" data-prod-view="active" onclick="setProductView('active')" style="background:var(--s2);border:1px solid var(--bd);padding:6px 12px;font-size:12px"><i class="ti ti-box"></i> Active</button>
+          <button class="btn" data-prod-view="test" onclick="setProductView('test')" style="background:var(--s2);border:1px solid var(--bd);padding:6px 12px;font-size:12px"><i class="ti ti-flask"></i> To Test</button>
+          <button class="btn" data-prod-view="inactive" onclick="setProductView('inactive')" style="background:var(--s2);border:1px solid var(--bd);padding:6px 12px;font-size:12px"><i class="ti ti-pause"></i> Inactive</button>
+          <button class="btn" data-prod-view="off" onclick="setProductView('off')" style="background:var(--s2);border:1px solid var(--bd);padding:6px 12px;font-size:12px"><i class="ti ti-circle-off"></i> Off</button>
+        </div>
+        <button class="btn btn-p" onclick="openAddProductModal()" style="padding:7px 14px;font-size:12.5px"><i class="ti ti-plus"></i> Add Product</button>
+      </div>
       <!-- Product rail -->
       <div class="prod-rail" id="prod-rail"></div>
       <!-- Expanded panel (avatars or angles view) -->
@@ -3672,6 +3682,7 @@ tr.clickable:hover{background:var(--s2)!important}
       <div class="fgroup"><label class="flabel">Price (MAD)</label><input type="number" class="finput" id="ap-price" placeholder="0" min="0"></div>
       <div class="fgroup"><label class="flabel">Category</label><input type="text" class="finput" id="ap-category" placeholder="Skincare, Serum…"></div>
     </div>
+    <div class="fgroup"><label class="flabel">SKU SpaceSeller <span style="color:var(--m2);font-weight:400">(optionnel — pour synchroniser les stats Ordered/Confirmed/Delivered)</span></label><input type="text" class="finput" id="ap-sku" placeholder="ex: foie, articulaire-comp, sirop-vita"></div>
     <div class="mfoot">
       <button class="btn btn-g" onclick="closeAddProductModal()">Cancel</button>
       <button class="btn btn-p" onclick="saveNewProduct()"><i class="ti ti-check"></i>Create Product</button>
@@ -5821,11 +5832,44 @@ function openAdd(){
   else if(cpage==='library') openLibModal(libMenuView);
 }
 
-/* DISABLED — products are managed in SpaceSeller (Mediaplus) only.
-   The CRM doesn't allow product creation to keep SKUs perfectly in sync.
-   Kept as a no-op so any stray onclick="openAddProductModal()" doesn't throw. */
+/* Open the Add Product modal. The new product inherits the currently-selected
+   view (active / test / inactive / off) so it appears in the right list. */
 function openAddProductModal(){
-  try { showToast('Add a product in your SpaceSeller catalog first — it syncs into the CRM automatically'); } catch(_){}
+  const view = (typeof productMenuView !== 'undefined' && productMenuView) ? productMenuView : 'active';
+  const titles = {
+    active:   { title: 'Add Active Product',  sub: 'This product will appear in "Active Products"' },
+    test:     { title: 'Add Product to Test', sub: 'This product will appear in "To Test"' },
+    inactive: { title: 'Add Inactive Product', sub: 'This product will appear in "Inactive"' },
+    off:      { title: 'Add Product Off',     sub: 'This product will appear in "Product Off"' },
+  };
+  const cfg = titles[view] || titles.active;
+  const t = document.getElementById('ap-title'); if (t) t.textContent = cfg.title;
+  const s = document.getElementById('ap-sub');   if (s) s.textContent = cfg.sub;
+  const st = document.getElementById('ap-status'); if (st) st.value = view;
+  ['ap-name','ap-emoji','ap-price','ap-category','ap-sku'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('modal-add-product')?.classList.add('open');
+  setTimeout(() => document.getElementById('ap-name')?.focus(), 60);
+}
+/* Switch the product list view (tabs) and remember the choice so the next Add
+   button click prefills the right status. */
+function setProductView(view){
+  if (!['active','test','inactive','off'].includes(view)) view = 'active';
+  if (typeof productMenuView !== 'undefined') productMenuView = view;
+  /* Toggle the .active style on the matching tab button */
+  document.querySelectorAll('[data-prod-view]').forEach(btn => {
+    if (btn.getAttribute('data-prod-view') === view) {
+      btn.style.background = 'var(--acc)';
+      btn.style.color = '#fff';
+      btn.style.borderColor = 'var(--acc)';
+    } else {
+      btn.style.background = 'var(--s2)';
+      btn.style.color = '';
+      btn.style.borderColor = 'var(--bd)';
+    }
+  });
+  try { if (typeof renderProducts === 'function') renderProducts(); } catch(_){}
 }
 
 function closeAddProductModal(){
@@ -5835,6 +5879,7 @@ function closeAddProductModal(){
 function saveNewProduct(){
   const name=document.getElementById('ap-name').value.trim();
   if(!name){ showToast('Product name is required'); return; }
+  const sku=(document.getElementById('ap-sku')?.value||'').trim();
   const ts=Date.now();
   const p={
     id:'p'+ts,
@@ -5845,8 +5890,18 @@ function saveNewProduct(){
     category:document.getElementById('ap-category').value.trim()||'–',
     color:'linear-gradient(135deg,#5b50f0,#9b8fff)',
     landingPage:'',
+    landingPages:[],
     bestCreatives:[],
-    avatars:[]
+    avatars:[],
+    tracking_code: sku,
+    trackingCode: sku,
+    ss_available: !!sku,
+    ssAvailable: !!sku,
+    stock: 0,
+    unit_cost: 0,
+    unitCost: 0,
+    created_at: new Date().toISOString(),
+    createdAt: ts,
   };
   products.push(p);
   saveProducts();
@@ -6993,7 +7048,8 @@ function renderProducts(){
     rail.innerHTML = `<div style="width:100%;padding:40px 20px;text-align:center;color:var(--m2)">
       <i class="ti ti-${view==='test'?'flask':view==='inactive'?'pause':view==='off'?'circle-off':'box'}" style="font-size:32px;display:block;margin-bottom:10px;opacity:.4"></i>
       <p style="font-size:13px;font-weight:600">No ${xss(label)} yet</p>
-      <p style="font-size:11.5px;margin-top:6px;line-height:1.6;max-width:380px;margin-left:auto;margin-right:auto">Les produits sont synchronisés depuis SpaceSeller (page Settings &rarr; Catalog). Pour qu'un produit apparaisse ici, son SKU doit correspondre &agrave; un produit r&eacute;f&eacute;renc&eacute; chez Mediaplus.</p>
+      <p style="font-size:11.5px;margin-top:6px;line-height:1.6;max-width:380px;margin-left:auto;margin-right:auto">Click <strong>+ Add Product</strong> en haut &agrave; droite pour cr&eacute;er un produit dans cette cat&eacute;gorie. Si tu veux que les stats SpaceSeller (Ordered/Confirmed/Delivered) s'affichent automatiquement, remplis le champ SKU avec la r&eacute;f&eacute;rence exacte de Mediaplus.</p>
+      <button class="btn btn-p" style="margin-top:14px" onclick="openAddProductModal()"><i class="ti ti-plus"></i> Add Product</button>
     </div>`;
     renderProductPanel();
     return;
