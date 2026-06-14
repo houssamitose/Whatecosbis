@@ -7029,6 +7029,46 @@ if(!products){  products = [
 function saveProducts(){
   LS.setItem('ecopro_products', JSON.stringify(products));
   try { checkLowStockNotifs(); } catch(_){}
+  /* Multi-user sync: fire-and-forget push to server. localStorage stays as offline cache. */
+  try { syncProductsToServer(); } catch(_){}
+}
+
+/* ── Multi-user product sync ─────────────────────────────────────────────
+   The server (Supabase via /api/products) is the source of truth across browsers.
+   localStorage is a fast cache + offline fallback. */
+let _crmProductPushInFlight = false;
+let _crmProductPushQueued = false;
+async function syncProductsToServer(){
+  if (_crmProductPushInFlight) { _crmProductPushQueued = true; return; }
+  _crmProductPushInFlight = true;
+  try {
+    const r = await fetch('/api/products', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: products || [] }),
+      cache: 'no-store',
+    });
+    if (!r.ok) {
+      console.warn('[crm-sync] products push failed', r.status);
+    }
+  } catch(e) {
+    console.warn('[crm-sync] products push error', e?.message || e);
+  } finally {
+    _crmProductPushInFlight = false;
+    if (_crmProductPushQueued) {
+      _crmProductPushQueued = false;
+      setTimeout(syncProductsToServer, 400);
+    }
+  }
+}
+async function loadProductsFromServer(){
+  try {
+    const r = await fetch('/api/products', { cache: 'no-store' });
+    if (!r.ok) return null;
+    const j = await r.json();
+    if (j?.success && Array.isArray(j.products)) return j.products;
+  } catch(_){}
+  return null;
 }
 
 let activeProdId=null, activeAvId=null;
@@ -13528,6 +13568,22 @@ function triggerServerSync(){
   try { fetch('/api/leads/sync', { method:'POST', cache:'no-store' }).catch(()=>{}); } catch(_){}
 }
 
+/* Multi-user products: pull from server on boot, then keep localStorage as cache */
+(async function bootProductsFromServer(){
+  try {
+    const serverProducts = await loadProductsFromServer();
+    if (Array.isArray(serverProducts) && serverProducts.length) {
+      products = serverProducts;
+      LS.setItem('ecopro_products', JSON.stringify(products));
+      try { if (typeof renderProducts === 'function') renderProducts(); } catch(_){}
+      try { checkLowStockNotifs(); } catch(_){}
+    } else if (Array.isArray(products) && products.length) {
+      /* Server is empty but local has data → push local to server (first-time migration) */
+      syncProductsToServer();
+    }
+  } catch(e) { console.warn('[crm-sync] boot products error', e?.message || e); }
+})();
+
 (async function bootAutoSync(){
   try { if (typeof fetchSpaceSellerStatuses === 'function') await fetchSpaceSellerStatuses(); } catch(_){}
   try { checkLowStockNotifs(); } catch(_){}
@@ -13539,7 +13595,7 @@ function triggerServerSync(){
   }
   const result = await ssSilentSync();
   if (result && result.count > 0) {
-    try { showToast('\u2713 ' + result.count + ' orders synced from SpaceSeller'); } catch(_){}
+    try { showToast('✓ ' + result.count + ' orders synced from SpaceSeller'); } catch(_){}
   }
 })();
 
@@ -13557,6 +13613,15 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) ssSi
     }
     if (name === 'products') {
       try { checkLowStockNotifs(); } catch(_){}
+    }
+    return r;
+  };
+})();
+
+</script>
+</body>
+</html>
+); } catch(_){}
     }
     return r;
   };
