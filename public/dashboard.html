@@ -12641,6 +12641,10 @@ function saveSbCreds(){ LS.setItem('ecos_sb_creds', JSON.stringify(sbCreds)); }
       sbCreds.url = sup.url;
       sbCreds.anon = sup.anonKey;
       saveSbCreds();
+      /* Re-wire doLogin in case maybeWireSupabaseAuth ran before creds loaded */
+      if (typeof window.__rewireSupabaseAuth === 'function') {
+        try { window.__rewireSupabaseAuth(); } catch(_){}
+      }
     }
   } catch(_){}
 })();
@@ -12848,8 +12852,10 @@ async function sbSignOut(){
   await _sbClient.auth.signOut();
 }
 
-/* On page load, if Supabase is configured and connected, override doLogin */
-(function maybeWireSupabaseAuth(){
+/* On page load, if Supabase is configured and connected, override doLogin.
+   Also exposed as window.__rewireSupabaseAuth so autoLoadSbConfig can call it
+   after async creds load. */
+window.__rewireSupabaseAuth = function maybeWireSupabaseAuth(){
   if(!sbCreds.url || !sbCreds.anon) return;
   /* Wrap doLogin: try Supabase first, fall back to cosmetic */
   const originalDoLogin = window.doLogin;
@@ -12886,7 +12892,9 @@ async function sbSignOut(){
     /* Cosmetic fallback */
     if(typeof originalDoLogin==='function') originalDoLogin();
   };
-})();
+};
+/* Call once immediately in case creds are already in localStorage */
+window.__rewireSupabaseAuth();
 
 
 
