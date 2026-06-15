@@ -29,36 +29,71 @@ function need() {
   return null;
 }
 
+/* Map legacy/loose priority values to our schema's CHECK-constraint values */
+function normPriority(p) {
+  if (!p) return "normal";
+  const s = String(p).toLowerCase();
+  if (s === "medium" || s === "med") return "normal";
+  if (["low", "normal", "high", "urgent"].includes(s)) return s;
+  return "normal";
+}
+function normStatus(s) {
+  if (!s) return "todo";
+  const v = String(s).toLowerCase();
+  if (["todo", "doing", "done", "blocked"].includes(v)) return v;
+  if (v === "in_progress" || v === "inprogress") return "doing";
+  if (v === "complete" || v === "completed") return "done";
+  return "todo";
+}
+
 function toRow(t) {
+  /* Only set product_id if it looks like a real product reference (text starting with 'p' or 'ss_') */
+  const pidRaw = t.product_id || t.productId;
+  const pid = pidRaw && /^(p|ss_)/.test(String(pidRaw)) ? pidRaw : null;
   return {
     id: t.id,
     title: t.title,
-    description: t.description || null,
-    status: t.status || "todo",
-    priority: t.priority || "normal",
-    due_date: t.due_date || t.dueDate || null,
-    assigned_to: t.assigned_to || t.assignedTo || null,
-    product_id: t.product_id || t.productId || null,
-    tags: Array.isArray(t.tags) ? t.tags : null,
+    description: t.description || t.desc || null,
+    status: normStatus(t.status),
+    priority: normPriority(t.priority),
+    due_date: t.due_date || t.dueDate || t.date || null,
+    /* assigned_to must be a UUID (auth.users.id). If it's a name like 'Houssam', drop it. */
+    assigned_to: t.assigned_to && /^[0-9a-f-]{36}$/i.test(t.assigned_to) ? t.assigned_to : null,
+    product_id: pid,
+    /* Encode the responsible-person name in tags as 'resp:Name' so it survives the round-trip */
+    tags: (() => {
+      const base = Array.isArray(t.tags) ? t.tags.filter(x => typeof x === 'string' && !x.startsWith('resp:')) : [];
+      const resp = t.resp || t.assignee_name;
+      if (resp) base.push('resp:' + resp);
+      return base.length ? base : null;
+    })(),
     created_at: t.created_at || new Date().toISOString(),
     deleted_at: t.deleted_at || null,
   };
 }
 
 function fromRow(r) {
+  /* Extract resp:Name back out of tags so the dashboard keeps showing the name */
+  const tags = Array.isArray(r.tags) ? r.tags : [];
+  const respTag = tags.find(t => typeof t === 'string' && t.startsWith('resp:'));
+  const resp = respTag ? respTag.slice(5) : null;
+  const cleanTags = tags.filter(t => !(typeof t === 'string' && t.startsWith('resp:')));
   return {
     id: r.id,
     title: r.title,
     description: r.description || "",
+    desc: r.description || "",
     status: r.status,
     priority: r.priority,
     due_date: r.due_date,
     dueDate: r.due_date,
+    date: r.due_date,
     assigned_to: r.assigned_to,
     assignedTo: r.assigned_to,
+    resp: resp || "",
     product_id: r.product_id,
     productId: r.product_id,
-    tags: r.tags || [],
+    tags: cleanTags,
     created_at: r.created_at,
     updated_at: r.updated_at,
     deleted_at: r.deleted_at,
