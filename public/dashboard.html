@@ -5987,8 +5987,12 @@ function renderOverview(){
   const denom = activeCount + testCount + inactiveCount;
   const winRate = denom>0 ? Math.round(activeCount/denom*100) : 0;
 
-  /* — Per-product performance — */
-  const rows = products.filter(p=>p.status==='active').map(p=>computeProductPerf(p));
+  /* — Per-product performance — only products sold this month (metrics.ordered > 0) unless window.SHOW_ALL_PRODUCTS=true */
+  const _showAll = !!window.SHOW_ALL_PRODUCTS;
+  const rows = products
+    .filter(p=>p.status==='active')
+    .filter(p=> _showAll ? true : ((p.metrics?.ordered || 0) > 0))
+    .map(p=>computeProductPerf(p));
   const totalNet = rows.reduce((acc,r)=>acc+r.netProfit, 0);
   const totalAdSpend = rows.reduce((acc,r)=>acc+r.adSpend, 0);
 
