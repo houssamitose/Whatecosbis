@@ -13,6 +13,16 @@ export const dynamic = "force-dynamic";
 const SB = process.env.SUPABASE_URL;
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST,OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
+export async function OPTIONS() {
+  return new Response(null, { status: 204, headers: CORS });
+}
+
 function sb(extra = {}) {
   return {
     apikey: KEY || "",
@@ -24,13 +34,13 @@ function sb(extra = {}) {
 
 export async function POST(req) {
   if (!SB || !KEY) {
-    return Response.json({ success: false, error: "Supabase env vars not configured" }, { status: 500 });
+    return Response.json({ success: false, error: "Supabase env vars not configured" }, { status: 500, headers: CORS });
   }
   try {
     const body = await req.json();
     const items = Array.isArray(body) ? body : body.items;
     if (!Array.isArray(items) || !items.length) {
-      return Response.json({ success: false, error: "items array required" }, { status: 400 });
+      return Response.json({ success: false, error: "items array required" }, { status: 400, headers: CORS });
     }
 
     let patched = 0;
@@ -65,8 +75,8 @@ export async function POST(req) {
       patched,
       errorCount: errors.length,
       errors: errors.slice(0, 10),
-    });
+    }, { headers: CORS });
   } catch (e) {
-    return Response.json({ success: false, error: e.message || String(e) }, { status: 500 });
+    return Response.json({ success: false, error: e.message || String(e) }, { status: 500, headers: CORS });
   }
 }
