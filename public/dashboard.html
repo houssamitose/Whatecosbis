@@ -4605,6 +4605,7 @@ async function syncTasksToServer(){
         priority: t.priority || 'normal',
         due_date: t.date || t.due_date || null,
         tags: Array.isArray(t.tags) ? t.tags : null,
+        resp: t.resp || '',
       })) }),
       cache: 'no-store',
     });
@@ -13756,7 +13757,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) ssSi
     return r;
   };
 })();
-
 </script>
 </body>
 </html>
+
