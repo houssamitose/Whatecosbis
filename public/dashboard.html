@@ -3982,7 +3982,47 @@ function seedAuth(){
 }
 
 function getUsers(){ return readJSON('ecos_team_members', []) || []; }
-function saveUsers(u){ LS.setItem('ecos_team_members', JSON.stringify(u)); }
+function saveUsers(u){
+  LS.setItem('ecos_team_members', JSON.stringify(u));
+  try { syncTeamToServer(u); } catch(_){}
+}
+
+/* ── Multi-user team sync ───────────────────────────────────────────── */
+let _crmTeamPushInFlight = false;
+let _crmTeamPushQueued = false;
+async function syncTeamToServer(users){
+  if (_crmTeamPushInFlight) { _crmTeamPushQueued = true; return; }
+  _crmTeamPushInFlight = true;
+  try {
+    const items = (users || getUsers()).map(u => ({
+      id: u.id, name: u.name, email: u.email || null, role: u.role || 'member', active: u.active !== false,
+    }));
+    const r = await fetch('/api/team', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items }), cache: 'no-store',
+    });
+    if (!r.ok) console.warn('[crm-sync] team push failed', r.status);
+  } catch(e) { console.warn('[crm-sync] team push error', e?.message || e); }
+  finally {
+    _crmTeamPushInFlight = false;
+    if (_crmTeamPushQueued) { _crmTeamPushQueued = false; setTimeout(() => syncTeamToServer(), 400); }
+  }
+}
+async function loadTeamFromServer(){
+  try {
+    const r = await fetch('/api/team', { cache: 'no-store' });
+    if (!r.ok) return null;
+    const j = await r.json();
+    if (j?.success && Array.isArray(j.members)) {
+      return j.members.map(m => ({
+        id: m.id, name: m.name, email: m.email || '', role: m.role || 'member',
+        password: '**managed**', active: m.active !== false,
+        createdAt: m.created_at ? new Date(m.created_at).getTime() : Date.now(),
+      }));
+    }
+  } catch(_){}
+  return null;
+}
 function getPerms(){ return readJSON('ecos_role_perms', DEFAULT_PERMS) || DEFAULT_PERMS; }
 function savePerms(p){ LS.setItem('ecos_role_perms', JSON.stringify(p)); }
 function getApiKeys(){ return readJSON('ecos_api_keys', []) || []; }
@@ -13724,6 +13764,19 @@ function triggerServerSync(){
   }
 })();
 
+/* Multi-user team: pull from server on boot */
+(async function bootTeamFromServer(){
+  try {
+    const serverTeam = await loadTeamFromServer();
+    if (Array.isArray(serverTeam) && serverTeam.length) {
+      LS.setItem('ecos_team_members', JSON.stringify(serverTeam));
+    } else {
+      const local = getUsers();
+      if (local.length) syncTeamToServer(local);
+    }
+  } catch(e) { console.warn('[crm-sync] boot team error', e?.message || e); }
+})();
+
 /* Multi-user settings: pull from server on boot */
 (async function bootSettingsFromServer(){
   try {
@@ -13757,7 +13810,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) ssSi
     return r;
   };
 })();
+
 </script>
 </body>
 </html>
-
