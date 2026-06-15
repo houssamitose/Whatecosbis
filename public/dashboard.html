@@ -12630,6 +12630,21 @@ async function exportOverviewPDF(){
 let sbCreds = readJSON('ecos_sb_creds', null) || { url:'', anon:'', service:'' };
 function saveSbCreds(){ LS.setItem('ecos_sb_creds', JSON.stringify(sbCreds)); }
 
+/* Auto-load Supabase URL + anon key from server (avoids manual entry per user) */
+(async function autoLoadSbConfig(){
+  try {
+    const r = await fetch('/api/config', { cache: 'no-store' });
+    if (!r.ok) return;
+    const j = await r.json();
+    const sup = j?.supabase;
+    if (sup?.url && sup?.anonKey) {
+      sbCreds.url = sup.url;
+      sbCreds.anon = sup.anonKey;
+      saveSbCreds();
+    }
+  } catch(_){}
+})();
+
 let _sbClient = null;
 let _sbConnected = false;
 
