@@ -81,23 +81,33 @@ async function aggregate() {
 }
 
 async function patchProductsMetrics(byRef) {
-  /* Fetch existing CRM products to map ref → id */
-  const r = await fetch(`${SB}/rest/v1/crm_products?select=id,tracking_code&deleted_at=is.null`, {
+  /* Fetch existing CRM products + their metrics to detect lock flag */
+  const r = await fetch(`${SB}/rest/v1/crm_products?select=id,tracking_code,metrics&deleted_at=is.null`, {
     headers: sb(),
     cache: "no-store",
   });
   if (!r.ok) throw new Error(`Supabase HTTP ${r.status}`);
   const products = await r.json();
   const refToId = {};
+  const lockedRefs = new Set();
   for (const p of products) {
-    if (p.tracking_code) refToId[p.tracking_code] = p.id;
+    if (p.tracking_code) {
+      refToId[p.tracking_code] = p.id;
+      if (p.metrics?.locked === true) lockedRefs.add(p.tracking_code);
+    }
   }
   let patched = 0;
   const skipped = [];
+  const lockedSkipped = [];
+  /* Mutating outer var across the iterations */
   for (const [ref, metrics] of Object.entries(byRef)) {
     const id = refToId[ref];
     if (!id) {
       skipped.push(ref);
+      continue;
+    }
+    if (lockedRefs.has(ref)) {
+      lockedSkipped.push(ref);
       continue;
     }
     const pr = await fetch(
@@ -110,7 +120,7 @@ async function patchProductsMetrics(byRef) {
     );
     if (pr.ok) patched++;
   }
-  return { patched, skipped };
+  return { patched, skipped, lockedSkipped };
 }
 
 export async function GET() {
@@ -134,13 +144,14 @@ export async function POST() {
   }
   try {
     const { byRef, scanned } = await aggregate();
-    const { patched, skipped } = await patchProductsMetrics(byRef);
+    const { patched, skipped, lockedSkipped } = await patchProductsMetrics(byRef);
     return Response.json({
       success: true,
       ordersScanned: scanned,
       uniqueSkus: Object.keys(byRef).length,
       productsPatched: patched,
       skuNotInCrm: skipped,
+      lockedSkipped: lockedSkipped,
     });
   } catch (e) {
     return Response.json({ success: false, error: e.message || String(e) }, { status: 500 });
