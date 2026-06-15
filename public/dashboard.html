@@ -7137,7 +7137,11 @@ function renderProducts(){
   const view = productMenuView; // 'active' | 'test' | 'inactive' | 'off'
   const rail = document.getElementById('prod-rail');
 
-  const filtered = products.filter(p=>(p.status||'active')===view);
+  /* Only show products sold this month (metrics.ordered > 0). Toggle via window.SHOW_ALL_PRODUCTS=true to see everything. */
+  const onlySold = !window.SHOW_ALL_PRODUCTS;
+  const filtered = products
+    .filter(p=>(p.status||'active')===view)
+    .filter(p => onlySold ? ((p.metrics?.ordered || 0) > 0) : true);
 
   if(!filtered.length){
     const label = view==='test'?'products to test':view==='inactive'?'inactive products':view==='off'?'products off':'active products';
