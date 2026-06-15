@@ -25,6 +25,22 @@ function sb(extra = {}) {
   };
 }
 
+/* SpaceSeller order status codes that mean "call center confirmed the order"
+   (i.e. counted as Confirmed in their dashboard widget). Anything else
+   (BLACKLISTED, CANCELED, FAUXCOMMANDE, RECHECK_CANCEL, etc.) is rejected. */
+const CONFIRMED_STATUSES = new Set([
+  "PAID",
+  "PROCESSED",
+  "PRODUCTRETURNED",
+  "DELAYED",
+  "RAPPEL1",
+  "RAPPEL2",
+  "RAPPEL3",
+  "RAPPEL4",
+  "RECHECK_REPORTER",
+  "RECHECK_REPORTER_02",
+]);
+
 async function aggregate() {
   /* Fetch ALL ss_orders with products + statuses. PostgREST default limit is 1000; bump it. */
   const url = `${SB}/rest/v1/ss_orders?select=order_id,products,order_status_code,delivery_status_code&limit=20000`;
@@ -43,7 +59,7 @@ async function aggregate() {
     for (const p of products) {
       if (p?.ref) refsInOrder.add(p.ref);
     }
-    const isConfirmed = row.order_status_code === "CONFIRMED";
+    const isConfirmed = CONFIRMED_STATUSES.has(row.order_status_code);
     const isDelivered = row.delivery_status_code === "P_DELIVERED";
     for (const ref of refsInOrder) {
       const a = byRef[ref] || { ordered: 0, confirmed: 0, delivered: 0, revenue: 0 };
