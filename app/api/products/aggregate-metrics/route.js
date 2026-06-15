@@ -50,14 +50,18 @@ async function aggregate() {
     throw new Error(`Supabase HTTP ${r.status}: ${t.slice(0, 200)}`);
   }
   const rows = await r.json();
-  /* Aggregate by ref */
+  /* Aggregate by ref + capture product names for auto-creation */
   const byRef = {};
+  const nameByRef = {};
   for (const row of rows) {
     const products = Array.isArray(row.products) ? row.products : [];
     /* Dedupe products within a single order by ref so we don't double-count */
     const refsInOrder = new Set();
     for (const p of products) {
-      if (p?.ref) refsInOrder.add(p.ref);
+      if (p?.ref) {
+        refsInOrder.add(p.ref);
+        if (!nameByRef[p.ref] && p.name) nameByRef[p.ref] = p.name;
+      }
     }
     const isConfirmed = CONFIRMED_STATUSES.has(row.order_status_code);
     const isDelivered = row.delivery_status_code === "P_DELIVERED";
@@ -77,7 +81,36 @@ async function aggregate() {
       byRef[ref] = a;
     }
   }
-  return { byRef, scanned: rows.length };
+  return { byRef, nameByRef, scanned: rows.length };
+}
+
+/* Auto-create missing crm_products rows for SKUs found in orders but not yet in catalog. */
+async function autoCreateMissingProducts(missingRefs, nameByRef) {
+  if (!missingRefs.length) return 0;
+  const rows = missingRefs.map((ref) => ({
+    id: "ss_" + ref.replace(/[^a-z0-9]/gi, "_").toLowerCase(),
+    status: "active",
+    name: nameByRef[ref] || ref,
+    emoji: "💊",
+    price: 0,
+    unit_cost: 0,
+    stock: 0,
+    category: "Mediaplus",
+    color: "#5b50f0",
+    tracking_code: ref,
+    ss_available: true,
+    landing_pages: [],
+    best_creatives: [],
+    avatars: [],
+    metrics: {},
+    created_at: new Date().toISOString(),
+  }));
+  const r = await fetch(`${SB}/rest/v1/crm_products?on_conflict=id`, {
+    method: "POST",
+    headers: sb({ Prefer: "resolution=merge-duplicates,return=minimal" }),
+    body: JSON.stringify(rows),
+  });
+  return r.ok ? rows.length : 0;
 }
 
 async function patchProductsMetrics(byRef) {
@@ -138,20 +171,31 @@ export async function GET() {
   }
 }
 
+
+
 export async function POST() {
   if (!SB || !KEY) {
     return Response.json({ success: false, error: "Supabase env vars not configured" }, { status: 500 });
   }
   try {
-    const { byRef, scanned } = await aggregate();
-    const { patched, skipped, lockedSkipped } = await patchProductsMetrics(byRef);
+    const { byRef, nameByRef, scanned } = await aggregate();
+    /* First pass: patch existing */
+    const firstPass = await patchProductsMetrics(byRef);
+    /* Auto-create products for SKUs that don't exist yet */
+    const autoCreated = await autoCreateMissingProducts(firstPass.skipped, nameByRef || {});
+    /* Second pass: patch the newly-created products */
+    let secondPass = { patched: 0 };
+    if (autoCreated > 0) {
+      secondPass = await patchProductsMetrics(byRef);
+    }
     return Response.json({
       success: true,
       ordersScanned: scanned,
       uniqueSkus: Object.keys(byRef).length,
-      productsPatched: patched,
-      skuNotInCrm: skipped,
-      lockedSkipped: lockedSkipped,
+      productsPatched: firstPass.patched + secondPass.patched,
+      autoCreated,
+      lockedSkipped: firstPass.lockedSkipped,
+      skuNotInCrm: [],
     });
   } catch (e) {
     return Response.json({ success: false, error: e.message || String(e) }, { status: 500 });
