@@ -4582,7 +4582,63 @@ if (!tasks) {
   saveTasks();
 }
 
-function saveTasks(){ LS.setItem('ecopro_tasks', JSON.stringify(tasks)); }
+function saveTasks(){
+  LS.setItem('ecopro_tasks', JSON.stringify(tasks));
+  try { syncTasksToServer(); } catch(_){}
+}
+
+/* ── Multi-user task sync ───────────────────────────────────────────── */
+let _crmTasksPushInFlight = false;
+let _crmTasksPushQueued = false;
+async function syncTasksToServer(){
+  if (_crmTasksPushInFlight) { _crmTasksPushQueued = true; return; }
+  _crmTasksPushInFlight = true;
+  try {
+    const r = await fetch('/api/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: (tasks || []).map(t => ({
+        id: t.id,
+        title: t.title,
+        description: t.desc || t.description || '',
+        status: t.status || 'todo',
+        priority: t.priority || 'normal',
+        due_date: t.date || t.due_date || null,
+        tags: Array.isArray(t.tags) ? t.tags : null,
+      })) }),
+      cache: 'no-store',
+    });
+    if (!r.ok) console.warn('[crm-sync] tasks push failed', r.status);
+  } catch(e) { console.warn('[crm-sync] tasks push error', e?.message || e); }
+  finally {
+    _crmTasksPushInFlight = false;
+    if (_crmTasksPushQueued) { _crmTasksPushQueued = false; setTimeout(syncTasksToServer, 400); }
+  }
+}
+async function loadTasksFromServer(){
+  try {
+    const r = await fetch('/api/tasks', { cache: 'no-store' });
+    if (!r.ok) return null;
+    const j = await r.json();
+    if (j?.success && Array.isArray(j.tasks)) {
+      /* Re-shape server tasks into client's expected schema */
+      return j.tasks.map(t => ({
+        id: t.id,
+        title: t.title,
+        desc: t.description || '',
+        description: t.description || '',
+        status: t.status,
+        priority: t.priority,
+        date: t.due_date,
+        tags: t.tags || [],
+        resp: t.resp || '',
+        audios: t.audios || [],
+        links: t.links || [],
+      }));
+    }
+  } catch(_){}
+  return null;
+}
 
 /* ═══════════════════════════════════════
    HELPERS
@@ -11982,7 +12038,31 @@ function setLowStockThreshold(n){
   const v = Math.max(0, parseInt(n, 10) || 40);
   localStorage.setItem('ecos_lowstock_threshold', String(v));
   checkLowStockNotifs();
+  /* Multi-user sync */
+  try { syncSettingsToServer({ low_stock_threshold: v }); } catch(_){}
   return v;
+}
+
+/* ── Multi-user settings sync ───────────────────────────────────── */
+async function syncSettingsToServer(patch){
+  try {
+    const r = await fetch('/api/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch || {}),
+      cache: 'no-store',
+    });
+    if (!r.ok) console.warn('[crm-sync] settings push failed', r.status);
+  } catch(e) { console.warn('[crm-sync] settings push error', e?.message || e); }
+}
+async function loadSettingsFromServer(){
+  try {
+    const r = await fetch('/api/settings', { cache: 'no-store' });
+    if (!r.ok) return null;
+    const j = await r.json();
+    return j?.settings || null;
+  } catch(_){}
+  return null;
 }
 function checkLowStockNotifs(){
   if (typeof products === 'undefined' || !Array.isArray(products)) return;
@@ -13578,10 +13658,23 @@ function triggerServerSync(){
       try { if (typeof renderProducts === 'function') renderProducts(); } catch(_){}
       try { checkLowStockNotifs(); } catch(_){}
     } else if (Array.isArray(products) && products.length) {
-      /* Server is empty but local has data → push local to server (first-time migration) */
       syncProductsToServer();
     }
   } catch(e) { console.warn('[crm-sync] boot products error', e?.message || e); }
+})();
+
+/* Multi-user tasks: pull from server on boot */
+(async function bootTasksFromServer(){
+  try {
+    const serverTasks = await loadTasksFromServer();
+    if (Array.isArray(serverTasks) && serverTasks.length) {
+      tasks = serverTasks;
+      LS.setItem('ecopro_tasks', JSON.stringify(tasks));
+      try { if (typeof renderTasks === 'function') renderTasks(); } catch(_){}
+    } else if (Array.isArray(tasks) && tasks.length) {
+      syncTasksToServer();
+    }
+  } catch(e) { console.warn('[crm-sync] boot tasks error', e?.message || e); }
 })();
 
 (async function bootAutoSync(){
@@ -13590,13 +13683,28 @@ function triggerServerSync(){
   const fromCache = await loadFromServerCache();
   if (fromCache) {
     triggerServerSync();
-    try { showToast('\u2713 ' + leads.length + ' orders loaded from cache'); } catch(_){}
+    try { showToast('✓ ' + leads.length + ' orders loaded from cache'); } catch(_){}
     return;
   }
   const result = await ssSilentSync();
   if (result && result.count > 0) {
     try { showToast('✓ ' + result.count + ' orders synced from SpaceSeller'); } catch(_){}
   }
+})();
+
+/* Multi-user settings: pull from server on boot */
+(async function bootSettingsFromServer(){
+  try {
+    const s = await loadSettingsFromServer();
+    if (s) {
+      if (s.low_stock_threshold) localStorage.setItem('ecos_lowstock_threshold', String(s.low_stock_threshold));
+      if (s.theme) try { localStorage.setItem('ecos_theme', s.theme); } catch(_){}
+      try { checkLowStockNotifs(); } catch(_){}
+    } else {
+      const localThresh = localStorage.getItem('ecos_lowstock_threshold');
+      if (localThresh) syncSettingsToServer({ low_stock_threshold: parseInt(localThresh, 10) || 40 });
+    }
+  } catch(e) { console.warn('[crm-sync] boot settings error', e?.message || e); }
 })();
 
 setInterval(() => { if (!document.hidden) ssSilentSyncThrottled(); }, 90000);
@@ -13613,15 +13721,6 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) ssSi
     }
     if (name === 'products') {
       try { checkLowStockNotifs(); } catch(_){}
-    }
-    return r;
-  };
-})();
-
-</script>
-</body>
-</html>
-); } catch(_){}
     }
     return r;
   };
