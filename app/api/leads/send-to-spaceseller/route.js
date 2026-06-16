@@ -94,22 +94,7 @@ async function trackOrderId(orderId) {
   });
 }
 
-async function postToSpaceSeller(lead) {
-  /* SpaceSeller POST /api/v1/orders payload — based on docs.
-     Required fields: products[], customer info. */
-  const payload = {
-    fullname: lead.fullname,
-    phone: lead.phone,
-    second_phone: lead.second_phone || "",
-    address: lead.address || "",
-    city: lead.city || "",
-    note: lead.note || "",
-    products: [{
-      ref: lead.product_ref,
-      qte: parseInt(lead.qte, 10) || 1,
-      price: parseFloat(lead.price) || 0,
-    }],
-  };
+async function postOnce(payload) {
   const r = await fetch(`${SS_BASE}/orders`, {
     method: "POST",
     headers: {
@@ -122,7 +107,44 @@ async function postToSpaceSeller(lead) {
   const text = await r.text();
   let body;
   try { body = JSON.parse(text); } catch { body = { raw: text.slice(0, 500) }; }
-  return { ok: r.ok, status: r.status, body };
+  return { ok: r.ok, status: r.status, body, payloadSent: payload };
+}
+
+async function postToSpaceSeller(lead) {
+  /* Try FLAT format first — matches user's Google Sheet structure (7 columns). */
+  const flat = {
+    date_order: lead.date_order || new Date().toISOString().slice(0, 19).replace("T", " "),
+    fullname: lead.fullname,
+    phone: lead.phone,
+    second_phone: lead.second_phone || "",
+    address: lead.address || "",
+    city: lead.city || "",
+    note: lead.note || "",
+    product_ref: lead.product_ref,
+    qte: parseInt(lead.qte, 10) || 1,
+    price: parseFloat(lead.price) || 0,
+  };
+  let r = await postOnce(flat);
+  if (r.ok) return r;
+  /* Fallback: NESTED format with products[] array (Laravel-ish convention) */
+  const nested = {
+    fullname: lead.fullname,
+    phone: lead.phone,
+    second_phone: lead.second_phone || "",
+    address: lead.address || "",
+    city: lead.city || "",
+    note: lead.note || "",
+    date_order: lead.date_order || undefined,
+    products: [{
+      ref: lead.product_ref,
+      qte: parseInt(lead.qte, 10) || 1,
+      price: parseFloat(lead.price) || 0,
+    }],
+  };
+  const r2 = await postOnce(nested);
+  /* Return whichever was closer to success, with full debug info */
+  if (r2.ok) return r2;
+  return { ok: false, status: r2.status, body: r2.body, attempts: { flat: r, nested: r2 } };
 }
 
 async function processLead(lead) {
@@ -159,7 +181,18 @@ async function processLead(lead) {
     });
     return { ok: false, id, status: "failed", error: out.body };
   }
-  const ssOrderId = out.body?.data?.order_id || out.body?.order_id || out.body?.id || null;
+  /* Extract order_id from many possible response shapes */
+  const b = out.body || {};
+  const ssOrderId =
+    b.data?.order_id ||
+    b.order_id ||
+    b.id ||
+    b.data?.id ||
+    b.result?.order_id ||
+    b.result?.id ||
+    b.order?.id ||
+    b.order?.order_id ||
+    null;
   await updateImport(id, {
     status: "sent",
     sent_at: new Date().toISOString(),
