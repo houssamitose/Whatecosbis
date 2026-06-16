@@ -8,5 +8,6 @@
       "path": "/api/products/aggregate-metrics",
       "schedule": "0 3 * * *"
     }
-  ]
+  ],
+  "buildCommand": "next build"
 }
