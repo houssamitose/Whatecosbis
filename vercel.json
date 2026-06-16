@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/spaceseller/poll-new-orders",
+      "schedule": "*/30 * * * *"
+    },
+    {
       "path": "/api/products/aggregate-metrics",
       "schedule": "0 3 * * *"
     }
