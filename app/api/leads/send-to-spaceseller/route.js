@@ -94,7 +94,30 @@ async function trackOrderId(orderId) {
   });
 }
 
-async function postOnce(payload) {
+async function postToSpaceSeller(lead) {
+  /* Payload per official SpaceSeller API doc:
+     - products[].sku, products[].quantity, products[].unit_price
+     - total_price required at top level
+     - id_city integer (optional) */
+  const quantity = Math.max(1, parseInt(lead.qte, 10) || 1);
+  const unitPrice = parseFloat(lead.price) || 0;
+  const totalPrice = quantity * unitPrice;
+  const payload = {
+    fullname: lead.fullname,
+    phone: lead.phone,
+    address: lead.address || "",
+    note: lead.note || "",
+    total_price: totalPrice,
+    products: [{
+      sku: lead.product_ref,
+      quantity,
+      unit_price: unitPrice,
+    }],
+  };
+  /* Optional id_city (only send if provided as integer) */
+  const cityId = parseInt(lead.id_city ?? lead.city_id, 10);
+  if (Number.isFinite(cityId)) payload.id_city = cityId;
+
   const r = await fetch(`${SS_BASE}/orders`, {
     method: "POST",
     headers: {
@@ -108,43 +131,6 @@ async function postOnce(payload) {
   let body;
   try { body = JSON.parse(text); } catch { body = { raw: text.slice(0, 500) }; }
   return { ok: r.ok, status: r.status, body, payloadSent: payload };
-}
-
-async function postToSpaceSeller(lead) {
-  /* Try FLAT format first — matches user's Google Sheet structure (7 columns). */
-  const flat = {
-    date_order: lead.date_order || new Date().toISOString().slice(0, 19).replace("T", " "),
-    fullname: lead.fullname,
-    phone: lead.phone,
-    second_phone: lead.second_phone || "",
-    address: lead.address || "",
-    city: lead.city || "",
-    note: lead.note || "",
-    product_ref: lead.product_ref,
-    qte: parseInt(lead.qte, 10) || 1,
-    price: parseFloat(lead.price) || 0,
-  };
-  let r = await postOnce(flat);
-  if (r.ok) return r;
-  /* Fallback: NESTED format with products[] array (Laravel-ish convention) */
-  const nested = {
-    fullname: lead.fullname,
-    phone: lead.phone,
-    second_phone: lead.second_phone || "",
-    address: lead.address || "",
-    city: lead.city || "",
-    note: lead.note || "",
-    date_order: lead.date_order || undefined,
-    products: [{
-      ref: lead.product_ref,
-      qte: parseInt(lead.qte, 10) || 1,
-      price: parseFloat(lead.price) || 0,
-    }],
-  };
-  const r2 = await postOnce(nested);
-  /* Return whichever was closer to success, with full debug info */
-  if (r2.ok) return r2;
-  return { ok: false, status: r2.status, body: r2.body, attempts: { flat: r, nested: r2 } };
 }
 
 async function processLead(lead) {
