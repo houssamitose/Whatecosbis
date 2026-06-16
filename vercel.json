@@ -1,7 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api/spaceseller/poll-new-orders",
+      "path": "/api/spaceseller/refresh-statuses?limit=25",
       "schedule": "*/30 * * * *"
     },
     {
