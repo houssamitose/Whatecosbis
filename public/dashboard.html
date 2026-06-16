@@ -4257,7 +4257,7 @@ function openTeamMemberModal(id){
   setTimeout(()=>document.getElementById('tmm-name').focus(),60);
 }
 function closeTeamMemberModal(){ document.getElementById('modal-team-member').classList.remove('open'); }
-function saveTeamMember(){
+async function saveTeamMember(){
   const id    = document.getElementById('tmm-id').value;
   const name  = document.getElementById('tmm-name').value.trim();
   const email = document.getElementById('tmm-email').value.trim().toLowerCase();
@@ -4267,17 +4267,46 @@ function saveTeamMember(){
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ showToast('Invalid email'); return; }
   const users = getUsers();
   if(id){
+    /* EDIT existing user — local only */
     const u = users.find(x=>x.id===id); if(!u) return;
     if(users.some(x=>x.id!==id && x.email.toLowerCase()===email)){ showToast('Another user has this email'); return; }
     u.name=name; u.email=email; u.role=role; u.password=pwd;
-  } else {
-    if(users.some(x=>x.email.toLowerCase()===email)){ showToast('A user with that email already exists'); return; }
-    users.push({id:'u_'+Date.now(),name,email,role,password:pwd,createdAt:Date.now()});
+    saveUsers(users);
+    closeTeamMemberModal();
+    renderTeamMembers();
+    showToast('Member updated ✓');
+    return;
   }
-  saveUsers(users);
-  closeTeamMemberModal();
-  renderTeamMembers();
-  showToast('Member saved ✓');
+  /* NEW user — create Supabase Auth account + team member in one shot */
+  if(users.some(x=>x.email.toLowerCase()===email)){ showToast('A user with that email already exists'); return; }
+  if (pwd.length < 6) { showToast('Mot de passe : 6 caractères minimum'); return; }
+  showToast('Création du compte…');
+  try {
+    const r = await fetch('/api/auth/admin/create-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pwd, name, role }),
+    });
+    const j = await r.json();
+    if(!r.ok || !j.success){
+      showToast(j.error || 'Création échouée');
+      return;
+    }
+    /* Persist locally with the Supabase user id for cross-browser sync */
+    users.push({
+      id: j.member?.id || ('u_'+Date.now()),
+      name, email, role,
+      password: '**supabase**',
+      auth_user_id: j.auth_user_id,
+      createdAt: Date.now(),
+    });
+    saveUsers(users);
+    closeTeamMemberModal();
+    renderTeamMembers();
+    showToast('✓ Compte créé · ' + name + ' peut se connecter avec ' + email);
+  } catch(e) {
+    showToast('Erreur réseau : ' + (e.message || e));
+  }
 }
 function deleteTeamMember(id){
   const me = getCurrentUser();
@@ -13784,7 +13813,7 @@ function triggerServerSync(){
     if (s) {
       if (s.low_stock_threshold) localStorage.setItem('ecos_lowstock_threshold', String(s.low_stock_threshold));
       if (s.theme) try { localStorage.setItem('ecos_theme', s.theme); } catch(_){}
-      try { checkLowStockNotifs(); } catch(_){}
+          try { checkLowStockNotifs(); } catch(_){}
     } else {
       const localThresh = localStorage.getItem('ecos_lowstock_threshold');
       if (localThresh) syncSettingsToServer({ low_stock_threshold: parseInt(localThresh, 10) || 40 });
