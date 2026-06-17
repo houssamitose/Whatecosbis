@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>New Leads — ECOS CRM</title>
+<style>
+:root {
+  --bg: #0e0e13; --s2: #1a1a22; --bd: #2a2a35; --t1: #e5e7eb; --m1: #9ca3af; --m2: #6b7280;
+  --acc: #6366f1; --good: #10b981; --bad: #ef4444; --mid: #f59e0b;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px; background: var(--bg); color: var(--t1); font: 14px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; min-height: 100vh; }
+.header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+.title { font-size: 22px; font-weight: 600; margin: 0; }
+.sub { color: var(--m1); font-size: 12px; margin-top: 4px; }
+.btn { background: var(--s2); color: var(--t1); border: 1px solid var(--bd); border-radius: 6px; padding: 7px 14px; font-size: 13px; cursor: pointer; font-weight: 500; }
+.btn:hover { background: #232330; }
+.btn-p { background: var(--acc); border-color: var(--acc); color: #fff; }
+.btn-p:hover { background: #4f46e5; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 20px; }
+.stat { background: var(--s2); border: 1px solid var(--bd); border-radius: 8px; padding: 12px 16px; }
+.stat-label { font-size: 11px; color: var(--m2); font-weight: 500; text-transform: uppercase; letter-spacing: .5px; }
+.stat-val { font-size: 24px; font-weight: 600; margin-top: 4px; }
+.card { background: var(--s2); border: 1px solid var(--bd); border-radius: 8px; overflow: hidden; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; padding: 10px 12px; background: #14141c; font-size: 11px; color: var(--m1); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--bd); }
+td { padding: 12px; border-bottom: 1px solid #1f1f29; font-size: 13px; }
+tr:last-child td { border-bottom: 0; }
+tr:hover td { background: #17171f; }
+.badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 500; border: 1px solid; }
+.badge-sent { background: rgba(16, 185, 129, .1); color: var(--good); border-color: rgba(16, 185, 129, .3); }
+.badge-failed { background: rgba(239, 68, 68, .1); color: var(--bad); border-color: rgba(239, 68, 68, .3); }
+.badge-pending { background: rgba(245, 158, 11, .1); color: var(--mid); border-color: rgba(245, 158, 11, .3); }
+.badge-duplicate { background: rgba(156, 163, 175, .1); color: var(--m1); border-color: rgba(156, 163, 175, .3); }
+.mono { font-family: ui-monospace, monospace; font-size: 12px; }
+.empty { text-align: center; padding: 60px 20px; color: var(--m2); }
+.empty-icon { font-size: 48px; opacity: .3; margin-bottom: 12px; }
+.toast { position: fixed; bottom: 24px; right: 24px; background: #1f2937; border: 1px solid var(--bd); border-radius: 8px; padding: 12px 18px; box-shadow: 0 4px 16px rgba(0,0,0,.4); font-size: 13px; transition: opacity .3s; }
+.back { display: inline-block; color: var(--m1); text-decoration: none; font-size: 13px; margin-bottom: 12px; }
+.back:hover { color: var(--t1); }
+.sheet-link { color: var(--acc); text-decoration: none; font-size: 12px; }
+.sheet-link:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<a href="/" class="back">← Retour CRM</a>
+<div class="header">
+  <div>
+    <h1 class="title">🆕 New Leads</h1>
+    <div class="sub">Leads importés depuis Google Sheets → envoyés automatiquement à SpaceSeller. <a class="sheet-link" target="_blank" href="https://docs.google.com/spreadsheets/d/1aZvHV0gWU3C-9WpG5v-Qv-_607xOWhrXz0tUH8FZan8/edit?gid=0">Ouvrir le Sheet ↗</a></div>
+  </div>
+  <div style="display: flex; gap: 8px;">
+    <button class="btn" onclick="loadData()">🔄 Refresh</button>
+    <button class="btn btn-p" onclick="triggerSync()">⚡ Sync now</button>
+  </div>
+</div>
+
+<div class="stats" id="stats"></div>
+<div class="card">
+  <div style="overflow-x: auto;">
+    <table>
+      <thead>
+        <tr><th>Date</th><th>Name</th><th>Phone</th><th>Product</th><th>Qty</th><th>Price</th><th>Status</th><th>SS Order ID</th><th>Source</th></tr>
+      </thead>
+      <tbody id="tbody">
+        <tr><td colspan="9" class="empty">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const xss = (s) => String(s||'').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+
+function toast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.style.opacity = '0', 3000);
+  setTimeout(() => t.remove(), 3500);
+}
+
+async function loadData() {
+  const tbody = document.getElementById('tbody');
+  try {
+    const r = await fetch('/api/lead-imports?limit=200', { cache: 'no-store' });
+    if (!r.ok) {
+      tbody.innerHTML = `<tr><td colspan="9" class="empty">Endpoint indisponible (HTTP ${r.status}).</td></tr>`;
+      return;
+    }
+    const j = await r.json();
+    const rows = j.imports || [];
+    const counts = j.counts || {};
+    document.getElementById('stats').innerHTML = ['Total', 'Sent', 'Failed', 'Pending', 'Duplicate'].map(k => {
+      const val = k === 'Total' ? rows.length : (counts[k.toLowerCase()] || 0);
+      const color = k === 'Sent' ? 'var(--good)' : k === 'Failed' ? 'var(--bad)' : k === 'Pending' ? 'var(--mid)' : 'var(--t1)';
+      return `<div class="stat"><div class="stat-label">${k}</div><div class="stat-val" style="color:${color}">${val}</div></div>`;
+    }).join('');
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="9" class="empty"><div class="empty-icon">📭</div>Aucun nouveau lead pour l'instant.<br><span style="font-size:12px">Ajoute des lignes dans ton Google Sheet, puis click <strong>Sync now</strong>.<br>Le cron horaire les enverra automatiquement à SpaceSeller.</span></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = rows.map(r => `<tr>
+      <td class="mono" style="color:var(--m2)">${(r.created_at||'').slice(0,16).replace('T',' ')}</td>
+      <td>${xss(r.fullname)}</td>
+      <td class="mono">${xss(r.phone)}</td>
+      <td>${xss(r.product_ref)}</td>
+      <td style="text-align:right">${r.qte||1}</td>
+      <td style="text-align:right">${r.price||0}</td>
+      <td><span class="badge badge-${r.status}">${r.status}</span></td>
+      <td class="mono">${r.spaceseller_order_id || '—'}</td>
+      <td style="color:var(--m2);font-size:11px">${xss(r.source)}</td>
+    </tr>`).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="9" class="empty">Erreur: ${xss(e.message)}</td></tr>`;
+  }
+}
+
+async function triggerSync() {
+  toast('Sync en cours…');
+  try {
+    const r = await fetch('/api/leads/sheets-poll', { method: 'POST', cache: 'no-store' });
+    if (!r.ok) { toast('Endpoint indisponible (HTTP ' + r.status + ')'); return; }
+    const j = await r.json();
+    if (j.success) {
+      toast(`✓ ${j.sent||0} envoyés · ${j.duplicates||0} dup · ${j.failed||0} fail`);
+      setTimeout(loadData, 800);
+    } else {
+      toast('Erreur: ' + (j.error || 'unknown'));
+    }
+  } catch(e) { toast('Erreur: ' + e.message); }
+}
+
+loadData();
+setInterval(loadData, 30000);
+</script>
+</body>
+</html>
