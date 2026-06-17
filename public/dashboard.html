@@ -1767,6 +1767,8 @@ tr.clickable:hover{background:var(--s2)!important}
       </div>
       <div class="nav-submenu">
         <div class="nav-subitem" onclick="goPage('leads',this)"><span class="nav-dot"></span>Orders</div>
+        <div class="nav-subitem" onclick="goPage('imports',this)"><span class="nav-dot"></span>Imports</div>
+        <div class="nav-subitem" onclick="goPage('new-leads',this)"><span class="nav-dot"></span>New Leads</div>
         <div class="nav-subitem" onclick="goPage('customers',this)"><span class="nav-dot"></span>Customers</div>
         <div class="nav-subitem" onclick="goPage('whatsapp',this)"><span class="nav-dot"></span>WhatsApp Campaign</div>
       </div>
@@ -3182,6 +3184,28 @@ tr.clickable:hover{background:var(--s2)!important}
             <div class="veo-history-title">Recent generations <span style="float:right;font-weight:500;font-size:10px;color:var(--m2);text-transform:none;letter-spacing:0">Stored locally</span></div>
             <div id="veo-history-list"></div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ LEAD IMPORTS (Google Sheets → SpaceSeller) ══ -->
+    <div class="page" id="page-imports">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;flex-wrap:wrap">
+        <div class="sec" style="margin:0"><i class="ti ti-file-import"></i>Lead Imports <span style="font-size:11px;color:var(--m1);font-weight:500;margin-left:6px">— Google Sheets → SpaceSeller pipeline</span></div>
+        <div style="display:flex;gap:6px">
+          <button class="btn" onclick="renderImports()" style="background:var(--s2);border:1px solid var(--bd);padding:6px 12px;font-size:12px"><i class="ti ti-refresh"></i> Refresh</button>
+          <button class="btn btn-p" onclick="triggerSheetsPoll()" style="padding:7px 14px;font-size:12.5px"><i class="ti ti-cloud-download"></i> Sync now</button>
+        </div>
+      </div>
+      <div id="imports-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px"></div>
+      <div class="card">
+        <div style="overflow-x:auto">
+          <table class="ov-prods-table" id="imports-table">
+            <thead><tr>
+              <th>Date</th><th>Name</th><th>Phone</th><th>Product</th><th>Qty</th><th>Price</th><th>Status</th><th>SS Order ID</th><th>Source</th>
+            </tr></thead>
+            <tbody id="imports-tbody"></tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -5906,6 +5930,10 @@ function goPage(n,el){
   }
   if(n==='team'){ /* team page removed — redirect to settings */
     goPage('settings', el);
+    return;
+  }
+  if(n==='new-leads'){ /* new-leads → imports page */
+    goPage('imports', el);
     return;
   }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -12280,7 +12308,8 @@ setInterval(scanForNotifs, 30000);
    CUSTOMER PROFILES — group leads by phone
 ═══════════════════════════════════════ */
 function getCustomers(){
-  const all = (typeof leads!=='undefined' && Array.isArray(leads)) ? leads : [];
+  /* Only customers with at least one delivered order */
+  const all = (typeof leads!=='undefined' && Array.isArray(leads)) ? leads.filter(o=>o.delivery_status?.code==='P_DELIVERED') : [];
   const byPhone = {};
   all.forEach(o=>{
     const phone = (o.phone||'').replace(/\D/g,'') || '_unknown';
@@ -12310,6 +12339,55 @@ function getCustomers(){
     };
   }).sort((a,b)=>b.total-a.total);
 }
+/* ══ LEAD IMPORTS UI ══════════════════════════════════════════════ */
+async function renderImports(){
+  try {
+    const r = await fetch('/api/lead-imports?limit=200', { cache: 'no-store' });
+    if (!r.ok) { document.getElementById('imports-tbody').innerHTML = `<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--m2)">Endpoint pas encore d&eacute;ploy&eacute; (Vercel build en attente)</td></tr>`; return; }
+    const j = await r.json();
+    const rows = j.imports || [];
+    const counts = j.counts || {};
+    const statsEl = document.getElementById('imports-stats');
+    if (statsEl) {
+      const card = (label, val, cls) => `<div style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:10px 12px"><div style="font-size:11px;color:var(--m2);font-weight:500">${label}</div><div style="font-size:20px;font-weight:600;margin-top:2px;color:${cls||'var(--t1)'}">${val}</div></div>`;
+      statsEl.innerHTML = card('Total', rows.length) + card('Sent', counts.sent || 0, 'var(--good)') + card('Failed', counts.failed || 0, 'var(--bad)') + card('Pending', counts.pending || 0, 'var(--mid)') + card('Duplicate', counts.duplicate || 0, 'var(--m1)');
+    }
+    const tbody = document.getElementById('imports-tbody');
+    if (!rows.length) { tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px 20px;color:var(--m2)"><i class="ti ti-file-import" style="font-size:32px;display:block;margin-bottom:10px;opacity:.4"></i>Aucun import pour l'instant.<br><span style="font-size:11.5px">Ajoute des leads dans ton Google Sheet, puis clique <strong>Sync now</strong>.</span></td></tr>`; return; }
+    const statusBadge = (s) => {
+      const map = { sent:'good', failed:'bad', pending:'mid', duplicate:'m1', skipped:'m2' };
+      return `<span style="background:var(--s2);border:1px solid var(--bd);padding:2px 8px;border-radius:999px;font-size:11px;color:var(--${map[s]||'t1'});font-weight:500">${s}</span>`;
+    };
+    tbody.innerHTML = rows.map(r => `<tr>
+      <td style="font-size:11px;color:var(--m2);white-space:nowrap">${(r.created_at||'').slice(0,16).replace('T',' ')}</td>
+      <td>${xss(r.fullname||'')}</td>
+      <td style="font-family:monospace;font-size:12px">${xss(r.phone||'')}</td>
+      <td style="font-size:12px">${xss(r.product_ref||'')}</td>
+      <td style="text-align:right">${r.qte||1}</td>
+      <td style="text-align:right">${r.price||0}</td>
+      <td>${statusBadge(r.status)}</td>
+      <td style="font-family:monospace;font-size:11px">${r.spaceseller_order_id || '—'}</td>
+      <td style="font-size:11px;color:var(--m2)">${xss(r.source||'')}</td>
+    </tr>`).join('');
+  } catch(e) {
+    document.getElementById('imports-tbody').innerHTML = `<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--bad)">Erreur: ${xss(e.message||String(e))}</td></tr>`;
+  }
+}
+async function triggerSheetsPoll(){
+  try {
+    showToast('Sync en cours…');
+    const r = await fetch('/api/leads/sheets-poll', { method: 'POST', cache: 'no-store' });
+    if (!r.ok) { showToast('Endpoint pas encore d&eacute;ploy&eacute; (HTTP ' + r.status + ')'); return; }
+    const j = await r.json();
+    if (j.success) {
+      showToast(`✓ ${j.sent||0} envoy&eacute;s · ${j.duplicates||0} dup · ${j.failed||0} fail`);
+      setTimeout(renderImports, 800);
+    } else {
+      showToast('Erreur: ' + (j.error || 'unknown'));
+    }
+  } catch(e) { showToast('Erreur r&eacute;seau: ' + (e.message||e)); }
+}
+
 function renderCustomersPage(){
   const customers = getCustomers();
   const q = (document.getElementById('cust-search')?.value || '').toLowerCase().trim();
@@ -13708,17 +13786,20 @@ async function ssSilentSync(){
       await new Promise(rr => setTimeout(rr, 200));
     }
     return { count: merged.length, requested: ids.length, errors };
-  } catch(_) { return null; }
+  } catch(_) { return { count:0, requested:ids.length, errors:ids.length }; }
   finally { _ssSyncInFlight = false; }
 }
 
-let _ssLastSync = 0;
-async function ssSilentSyncThrottled(force){
+function ssSilentSyncThrottled(){
+  if (_ssSyncInFlight) return;
   const now = Date.now();
-  if (!force && now - _ssLastSync < 25000) return null;
+  if (now - _ssLastSync < 30000) return;
   _ssLastSync = now;
-  return ssSilentSync();
+  ssSilentSync();
 }
+
+let _ssSyncInFlight = false;
+let _ssLastSync = 0;
 
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
@@ -13749,7 +13830,6 @@ function triggerServerSync(){
   try { fetch('/api/leads/sync', { method:'POST', cache:'no-store' }).catch(()=>{}); } catch(_){}
 }
 
-/* Multi-user products: pull from server on boot, then keep localStorage as cache */
 (async function bootProductsFromServer(){
   try {
     const serverProducts = await loadProductsFromServer();
@@ -13764,7 +13844,6 @@ function triggerServerSync(){
   } catch(e) { console.warn('[crm-sync] boot products error', e?.message || e); }
 })();
 
-/* Multi-user tasks: pull from server on boot */
 (async function bootTasksFromServer(){
   try {
     const serverTasks = await loadTasksFromServer();
@@ -13793,7 +13872,6 @@ function triggerServerSync(){
   }
 })();
 
-/* Multi-user team: pull from server on boot */
 (async function bootTeamFromServer(){
   try {
     const serverTeam = await loadTeamFromServer();
@@ -13806,14 +13884,13 @@ function triggerServerSync(){
   } catch(e) { console.warn('[crm-sync] boot team error', e?.message || e); }
 })();
 
-/* Multi-user settings: pull from server on boot */
 (async function bootSettingsFromServer(){
   try {
     const s = await loadSettingsFromServer();
     if (s) {
       if (s.low_stock_threshold) localStorage.setItem('ecos_lowstock_threshold', String(s.low_stock_threshold));
       if (s.theme) try { localStorage.setItem('ecos_theme', s.theme); } catch(_){}
-          try { checkLowStockNotifs(); } catch(_){}
+      try { checkLowStockNotifs(); } catch(_){}
     } else {
       const localThresh = localStorage.getItem('ecos_lowstock_threshold');
       if (localThresh) syncSettingsToServer({ low_stock_threshold: parseInt(localThresh, 10) || 40 });
@@ -13835,6 +13912,22 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) ssSi
     }
     if (name === 'products') {
       try { checkLowStockNotifs(); } catch(_){}
+    }
+    if (name === 'imports') {
+      try { renderImports(); } catch(_){}
+    }
+    return r;
+  };
+})();
+
+</script>
+</body>
+</html>
+ === 'products') {
+      try { checkLowStockNotifs(); } catch(_){}
+    }
+    if (name === 'imports') {
+      try { renderImports(); } catch(_){}
     }
     return r;
   };
