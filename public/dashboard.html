@@ -1768,7 +1768,6 @@ tr.clickable:hover{background:var(--s2)!important}
       <div class="nav-submenu">
         <div class="nav-subitem" onclick="goPage('leads',this)"><span class="nav-dot"></span>Orders</div>
         <div class="nav-subitem" onclick="goPage('imports',this)"><span class="nav-dot"></span>Imports</div>
-        <div class="nav-subitem" onclick="goPage('new-leads',this)"><span class="nav-dot"></span>New Leads</div>
         <div class="nav-subitem" onclick="goPage('customers',this)"><span class="nav-dot"></span>Customers</div>
         <div class="nav-subitem" onclick="goPage('whatsapp',this)"><span class="nav-dot"></span>WhatsApp Campaign</div>
       </div>
@@ -2089,7 +2088,7 @@ tr.clickable:hover{background:var(--s2)!important}
           </select>
           <input type="text" class="fsel" id="ld-search" oninput="renderLeads()" placeholder="Search name / phone…" style="min-width:160px">
           <button class="btn btn-p" onclick="openNewOrderModal()"><i class="ti ti-plus"></i>New order</button>
-          <button class="btn" style="border:1px solid var(--bd);background:var(--s2)" onclick="importOrderIds()" title="Paste order IDs from your SpaceSeller dashboard to track them"><i class="ti ti-cloud-upload"></i>Import IDs</button>
+          <button class="btn" style="border:1px solid var(--bd);background:var(--s2)" onclick="exportFilteredLeads()" title="Export leads filtrés en CSV"><i class="ti ti-download"></i>Export CSV</button>
           <button class="btn btn-p" id="ld-fetch-btn" onclick="fetchLeads()"><i class="ti ti-refresh"></i>Sync</button>
         </div>
       </div>
@@ -2111,9 +2110,17 @@ tr.clickable:hover{background:var(--s2)!important}
       <div class="bulk-bar" id="bulk-bar">
         <span class="bulk-count" id="bulk-count">0 selected</span>
         <div class="bulk-actions">
-          <button class="btn btn-p" onclick="bulkPushToWhatsApp()"><i class="ti ti-brand-whatsapp"></i>Push to WhatsApp</button>
-          <button class="btn btn-g" onclick="bulkExportSelected()"><i class="ti ti-download"></i>Export CSV</button>
-          <button class="btn btn-g" onclick="bulkMarkAsCalled()"><i class="ti ti-phone-check"></i>Mark as called</button>
+          <select id="bulk-status-sel" class="fsel" style="font-size:12px;padding:4px 8px;height:30px">
+            <option value="">Changer statut…</option>
+            <option value="NEW">New</option>
+            <option value="CONFIRMED">Confirmed</option>
+            <option value="CANCELED">Canceled</option>
+            <option value="PAID">Paid</option>
+          </select>
+          <button class="btn btn-g" onclick="bulkChangeStatus()"><i class="ti ti-tag"></i>Appliquer</button>
+          <button class="btn btn-p" onclick="bulkPushToWhatsApp()"><i class="ti ti-brand-whatsapp"></i>WhatsApp</button>
+          <button class="btn btn-g" onclick="bulkExportSelected()"><i class="ti ti-download"></i>Export</button>
+          <button class="btn btn-g" onclick="bulkMarkAsCalled()"><i class="ti ti-phone-check"></i>Appelé</button>
           <button class="btn btn-g" onclick="clearLeadSelection()"><i class="ti ti-x"></i>Clear</button>
         </div>
       </div>
@@ -3202,7 +3209,7 @@ tr.clickable:hover{background:var(--s2)!important}
         <div style="overflow-x:auto">
           <table class="ov-prods-table" id="imports-table">
             <thead><tr>
-              <th>Date</th><th>Name</th><th>Phone</th><th>Product</th><th>Qty</th><th>Price</th><th>Status</th><th>SS Order ID</th><th>Source</th>
+              <th>Date</th><th>Name</th><th>Phone</th><th>Product</th><th>Qty</th><th>Price</th><th>Status</th><th>SS Order ID</th><th>Source</th><th>Error</th>
             </tr></thead>
             <tbody id="imports-tbody"></tbody>
           </table>
@@ -5930,10 +5937,6 @@ function goPage(n,el){
   }
   if(n==='team'){ /* team page removed — redirect to settings */
     goPage('settings', el);
-    return;
-  }
-  if(n==='new-leads'){ /* new-leads → imports page */
-    goPage('imports', el);
     return;
   }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -12343,7 +12346,7 @@ function getCustomers(){
 async function renderImports(){
   try {
     const r = await fetch('/api/lead-imports?limit=200', { cache: 'no-store' });
-    if (!r.ok) { document.getElementById('imports-tbody').innerHTML = `<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--m2)">Endpoint pas encore d&eacute;ploy&eacute; (Vercel build en attente)</td></tr>`; return; }
+    if (!r.ok) { document.getElementById('imports-tbody').innerHTML = `<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--m2)">Endpoint pas encore d&eacute;ploy&eacute; (Vercel build en attente)</td></tr>`; return; }
     const j = await r.json();
     const rows = j.imports || [];
     const counts = j.counts || {};
@@ -12353,10 +12356,16 @@ async function renderImports(){
       statsEl.innerHTML = card('Total', rows.length) + card('Sent', counts.sent || 0, 'var(--good)') + card('Failed', counts.failed || 0, 'var(--bad)') + card('Pending', counts.pending || 0, 'var(--mid)') + card('Duplicate', counts.duplicate || 0, 'var(--m1)');
     }
     const tbody = document.getElementById('imports-tbody');
-    if (!rows.length) { tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px 20px;color:var(--m2)"><i class="ti ti-file-import" style="font-size:32px;display:block;margin-bottom:10px;opacity:.4"></i>Aucun import pour l'instant.<br><span style="font-size:11.5px">Ajoute des leads dans ton Google Sheet, puis clique <strong>Sync now</strong>.</span></td></tr>`; return; }
+    if (!rows.length) { tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px 20px;color:var(--m2)"><i class="ti ti-file-import" style="font-size:32px;display:block;margin-bottom:10px;opacity:.4"></i>Aucun import pour l'instant.<br><span style="font-size:11.5px">Ajoute des leads dans ton Google Sheet, puis clique <strong>Sync now</strong>.</span></td></tr>`; return; }
     const statusBadge = (s) => {
-      const map = { sent:'good', failed:'bad', pending:'mid', duplicate:'m1', skipped:'m2' };
-      return `<span style="background:var(--s2);border:1px solid var(--bd);padding:2px 8px;border-radius:999px;font-size:11px;color:var(--${map[s]||'t1'});font-weight:500">${s}</span>`;
+      const styles = {
+        sent:      'background:rgba(34,197,94,.15);color:var(--good);border-color:rgba(34,197,94,.3)',
+        failed:    'background:rgba(239,68,68,.15);color:var(--bad);border-color:rgba(239,68,68,.3)',
+        pending:   'background:rgba(234,179,8,.15);color:var(--amber);border-color:rgba(234,179,8,.3)',
+        duplicate: 'background:rgba(249,115,22,.15);color:var(--mid);border-color:rgba(249,115,22,.3)',
+        skipped:   'background:var(--s2);color:var(--m2);border-color:var(--bd)',
+      };
+      return `<span style="border:1px solid;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;${styles[s]||styles.skipped}">${s}</span>`;
     };
     tbody.innerHTML = rows.map(r => `<tr>
       <td style="font-size:11px;color:var(--m2);white-space:nowrap">${(r.created_at||'').slice(0,16).replace('T',' ')}</td>
@@ -12368,9 +12377,10 @@ async function renderImports(){
       <td>${statusBadge(r.status)}</td>
       <td style="font-family:monospace;font-size:11px">${r.spaceseller_order_id || '—'}</td>
       <td style="font-size:11px;color:var(--m2)">${xss(r.source||'')}</td>
+      <td style="font-size:11px;color:var(--bad);max-width:180px;white-space:normal;word-break:break-word">${r.error ? `<span title="${xss(r.error)}" style="cursor:help">⚠ ${xss(r.error.slice(0,60))}${r.error.length>60?'…':''}</span>` : ''}</td>
     </tr>`).join('');
   } catch(e) {
-    document.getElementById('imports-tbody').innerHTML = `<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--bad)">Erreur: ${xss(e.message||String(e))}</td></tr>`;
+    document.getElementById('imports-tbody').innerHTML = `<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--bad)">Erreur: ${xss(e.message||String(e))}</td></tr>`;
   }
 }
 async function triggerSheetsPoll(){
@@ -12643,6 +12653,59 @@ function bulkMarkAsCalled(){
   });
   showToast(`${selectedLeads.size} marked as called (local only)`);
   clearLeadSelection();
+}
+function bulkChangeStatus(){
+  const sel = document.getElementById('bulk-status-sel');
+  const status = sel?.value;
+  if(!status){ showToast('Choisir un statut d\'abord'); return; }
+  if(!confirm(`Changer le statut de ${selectedLeads.size} commande(s) en "${status}" (local) ?`)) return;
+  const n = selectedLeads.size;
+  (typeof leads!=='undefined'?leads:[]).forEach(o=>{
+    if(selectedLeads.has(String(o.order_id||o.id))){
+      if(!o.order_status) o.order_status = {};
+      o.order_status.code = status;
+      o.order_status.label = status.charAt(0) + status.slice(1).toLowerCase();
+    }
+  });
+  if(typeof renderLeads==='function') renderLeads();
+  showToast(`${n} commandes → ${status} (local)`);
+  clearLeadSelection();
+  if(sel) sel.value='';
+}
+function exportFilteredLeads(){
+  const all = (typeof leads!=='undefined'?leads:[]);
+  const statusFilter = document.getElementById('ld-status-filter')?.value || 'all';
+  const search = (document.getElementById('ld-search')?.value||'').toLowerCase();
+  const rows = all.filter(o=>{
+    if(statusFilter!=='all' && o.order_status?.code!==statusFilter) return false;
+    if(search){
+      const hay = ((o.fullname||'')+(o.phone||'')).toLowerCase();
+      if(!hay.includes(search)) return false;
+    }
+    return true;
+  });
+  if(!rows.length){ showToast('Aucun lead à exporter'); return; }
+  const headers = ['Order ID','Name','Phone','Total','Status','Delivery','Products','City','Date'];
+  const csv = [headers.join(',')];
+  rows.forEach(o=>{
+    csv.push([
+      `"${o.order_id||''}"`,
+      `"${(o.fullname||'').replace(/"/g,'""')}"`,
+      `"${(o.phone||'')}"`,
+      o.total_price||0,
+      `"${o.order_status?.code||''}"`,
+      `"${o.delivery_status?.code||''}"`,
+      `"${(o.products||[]).map(p=>p.name||p.sku).join('; ').replace(/"/g,'""')}"`,
+      `"${(o.city||'')}"`,
+      `"${(o.date_order||'').slice(0,10)}"`,
+    ].join(','));
+  });
+  const blob = new Blob([csv.join('\n')],{type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `leads-export-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  showToast(`Exported ${rows.length} leads`);
 }
 
 /* ── PDF REPORT EXPORT (jsPDF lazy-loaded) ── */
