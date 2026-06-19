@@ -1931,46 +1931,10 @@ tr.clickable:hover{background:var(--s2)!important}
         <div class="kpi"><div class="kpi-bar" style="background:var(--amber)"></div><div class="kpi-lbl"><i class="ti ti-trophy"></i>Winning Rate</div><div class="kpi-val" id="ov-k-winrate" style="color:var(--amber)">0%</div><div class="kpi-sub" id="ov-k-winrate-sub"></div></div>
         <div class="kpi"><div class="kpi-bar" style="background:var(--green)"></div><div class="kpi-lbl"><i class="ti ti-coin"></i>Total Net Profit</div><div class="kpi-val" id="ov-k-profit" style="color:var(--green);font-size:18px">0 MAD</div><div class="kpi-sub" id="ov-k-profit-sub"></div></div>
       </div>
-      <!-- ══ LIVE ORDERS (ex-SpaceSeller) ══ -->
-      <div class="card" style="margin-top:14px">
-        <div class="sec" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-          <span><i class="ti ti-packages"></i>Live Orders</span>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-            <input type="hidden" id="ss-token" value="">
-            <button class="btn admin-only-el" style="border:1px solid var(--bd);background:var(--s2);font-size:11px;padding:4px 10px" onclick="_goSettings('api')" title="Manage token in Settings"><i class="ti ti-key"></i>Token</button>
-            <button class="btn" style="border:1px solid var(--bd);background:var(--s2);font-size:11px;padding:4px 10px" onclick="importOrderIds()"><i class="ti ti-cloud-upload"></i>Import IDs</button>
-            <button class="btn btn-p" id="ss-fetch-btn" style="font-size:11px;padding:4px 10px" onclick="fetchSpaceSeller()"><i class="ti ti-refresh"></i>Sync Orders</button>
-          </div>
-        </div>
-        <div id="ss-status" style="display:none;margin:8px 0"></div>
-        <div class="kpi-g" id="ss-kpis" style="display:none;margin:10px 0">
-          <div class="kpi"><div class="kpi-bar" style="background:var(--acc)"></div><div class="kpi-lbl"><i class="ti ti-packages"></i>Total Orders</div><div class="kpi-val" id="ss-k-total">–</div></div>
-          <div class="kpi"><div class="kpi-bar" style="background:var(--amber)"></div><div class="kpi-lbl"><i class="ti ti-circle-check"></i>Confirmed</div><div class="kpi-val" id="ss-k-confirmed" style="color:var(--amber)">–</div><div class="kpi-sub" id="ss-k-conf-rate"></div></div>
-          <div class="kpi"><div class="kpi-bar" style="background:var(--green)"></div><div class="kpi-lbl"><i class="ti ti-truck-delivery"></i>Delivered</div><div class="kpi-val" id="ss-k-delivered" style="color:var(--green)">–</div><div class="kpi-sub" id="ss-k-del-rate"></div></div>
-          <div class="kpi"><div class="kpi-bar" style="background:var(--blue)"></div><div class="kpi-lbl"><i class="ti ti-users-group"></i>Repeat Buyers</div><div class="kpi-val" id="ss-k-repeat" style="color:var(--blue)">–</div><div class="kpi-sub" id="ss-k-repeat-pct"></div></div>
-        </div>
-        <div id="ss-kpis-extra" style="display:none;margin-bottom:10px"></div>
-        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap" id="ss-order-filters" style="display:none">
-          <select class="fsel" id="ss-filter-status" onchange="renderSSOrders()">
-            <option value="all">All Statuses</option>
-            <option value="NEW">New</option>
-            <option value="CONFIRMED">Confirmed</option>
-            <option value="PAID">Paid</option>
-            <option value="CANCELED">Canceled</option>
-          </select>
-          <input type="text" class="fsel" id="ss-filter-search" oninput="renderSSOrders()" placeholder="Search name / phone…" style="min-width:180px">
-        </div>
-        <div id="ss-orders-card" style="display:none">
-          <div style="font-size:11px;color:var(--m1);font-weight:600;margin-bottom:6px"><i class="ti ti-table"></i> All Orders <span id="ss-orders-count" style="margin-left:4px"></span></div>
-          <div class="tw"><table>
-            <thead><tr><th>#</th><th>Customer</th><th>Product(s)</th><th>Total</th><th>Order Status</th><th>Delivery</th><th>Date</th></tr></thead>
-            <tbody id="ss-orders-tb"></tbody>
-          </table></div>
-        </div>
-        <div class="ss-empty" id="ss-empty">
-          <i class="ti ti-cloud-download" style="font-size:36px;color:var(--m2);display:block;margin-bottom:10px"></i>
-          <p style="font-size:12px;font-weight:600;color:var(--m1)">Click <strong>Sync Orders</strong> to load live data from SpaceSeller</p>
-        </div>
+      <!-- ══ TODAY ══ -->
+      <div class="kpi-g" style="margin-top:14px">
+        <div class="kpi"><div class="kpi-bar" style="background:var(--blue)"></div><div class="kpi-lbl"><i class="ti ti-calendar-today"></i>Today Orders</div><div class="kpi-val" id="ov-k-today-count" style="color:var(--blue)">–</div><div class="kpi-sub" id="ov-k-today-sub"></div></div>
+        <div class="kpi"><div class="kpi-bar" style="background:var(--green)"></div><div class="kpi-lbl"><i class="ti ti-circle-check"></i>Today Confirm Rate</div><div class="kpi-val" id="ov-k-today-rate" style="color:var(--green)">–</div><div class="kpi-sub" id="ov-k-today-rate-sub"></div></div>
       </div>
 
       <div class="card" style="margin-top:14px">
@@ -2128,7 +2092,6 @@ tr.clickable:hover{background:var(--s2)!important}
           <input type="text" class="fsel" id="ld-search" oninput="renderLeads()" placeholder="Search name / phone…" style="min-width:160px">
           <button class="btn btn-p" onclick="openNewOrderModal()"><i class="ti ti-plus"></i>New order</button>
           <button class="btn" style="border:1px solid var(--bd);background:var(--s2)" onclick="exportFilteredLeads()" title="Export leads filtrés en CSV"><i class="ti ti-download"></i>Export CSV</button>
-          <button class="btn btn-p" id="ld-fetch-btn" onclick="fetchLeads()"><i class="ti ti-refresh"></i>Sync</button>
         </div>
       </div>
       <div class="lk-board" id="lk-board" style="display:none"></div>
@@ -6028,7 +5991,7 @@ function goPage(n,el){
   cpage=n;
   /* Always scroll the content area back to top so the page header is visible immediately */
   try{ const _c = document.querySelector('.content'); if(_c) _c.scrollTop = 0; window.scrollTo(0, 0); }catch(_){}
-  if(n==='overview'){ renderOverview(); try{ renderSSAll(); }catch(_){} }
+  if(n==='overview'){ renderOverview(); }
   if(n==='tasks'){ taskDateFilter=document.getElementById('tdate').value||''; renderKanban(); }
   if(n==='leads') renderLeads();
   if(n==='simulator'){ updateSimulator(); simRefreshScenarioDropdown(); }
@@ -6173,6 +6136,25 @@ function renderOverview(){
   setH('ov-k-winrate-sub', `<span class="tag ${winRate>=50?'tg':winRate>=25?'ta':'tr'}">${activeCount}/${denom||0} converted</span>`);
   set('ov-k-profit', totalNet.toLocaleString(undefined,{maximumFractionDigits:0})+' MAD');
   setH('ov-k-profit-sub', `<span class="tag tp">Ad spend ${totalAdSpend.toLocaleString(undefined,{maximumFractionDigits:0})} MAD</span>`);
+
+  /* — Today's stats from leads[] (no API call) — */
+  const _todayStr = new Date().toISOString().slice(0,10);
+  const _allLeads = (typeof leads !== 'undefined' && Array.isArray(leads)) ? leads : [];
+  const _todayLeads = _allLeads.filter(l=>{
+    const d = (l.created_at||l.createdAt||l.date||'').slice(0,10);
+    return d === _todayStr;
+  });
+  const _todayCount = _todayLeads.length;
+  const _todayConf = _todayLeads.filter(l=>{
+    const s = (l.status||'').toUpperCase();
+    return s.includes('CONFIRM') || s.includes('DELIVER') || s.includes('PAID');
+  }).length;
+  const _todayRate = _todayCount > 0 ? Math.round(_todayConf/_todayCount*100) : 0;
+  set('ov-k-today-count', _todayCount);
+  setH('ov-k-today-sub', `<span class="tag tb">${_todayConf} confirmées</span>`);
+  set('ov-k-today-rate', _todayRate+'%');
+  setH('ov-k-today-rate-sub', `<span class="tag ${_todayRate>=50?'tg':_todayRate>=25?'ta':'tr'}">${_todayCount} commandes</span>`);
+
   try{ renderTopCreatives(); }catch(e){ console.warn('top creatives render:', e); }
 
   const tbody = document.getElementById('ov-prods-tbody');
@@ -13853,6 +13835,8 @@ function bcRenderEnhanced(pid){
         <span class="bc-creative-status-pill ${status}">${status}</span>
         <button class="tbn" title="Remove" onclick="bcRemove('${pid}',${idx})"><i class="ti ti-x"></i></button>
       </div>
+
+      </div>
       <div class="bc-creative-meta">
         <select onchange="bcSetField('${pid}',${idx},'creator',this.value)">
           <option value="">— Creator —</option>
@@ -14160,17 +14144,11 @@ function triggerServerSync(){
 })();
 
 (async function bootAutoSync(){
-  try { if (typeof fetchSpaceSellerStatuses === 'function') await fetchSpaceSellerStatuses(); } catch(_){}
   try { checkLowStockNotifs(); } catch(_){}
   const fromCache = await loadFromServerCache();
   if (fromCache) {
     triggerServerSync();
     try { showToast('✓ ' + leads.length + ' orders loaded from cache'); } catch(_){}
-    return;
-  }
-  const result = await ssSilentSync();
-  if (result && result.count > 0) {
-    try { showToast('✓ ' + result.count + ' orders synced from SpaceSeller'); } catch(_){}
   }
 })();
 
@@ -14200,18 +14178,11 @@ function triggerServerSync(){
   } catch(e) { console.warn('[crm-sync] boot settings error', e?.message || e); }
 })();
 
-setInterval(() => { if (!document.hidden) ssSilentSyncThrottled(); }, 90000);
-window.addEventListener('focus', () => ssSilentSyncThrottled());
-document.addEventListener('visibilitychange', () => { if (!document.hidden) ssSilentSyncThrottled(); });
-
 (function hookGoPageForSync(){
   if (typeof window.goPage !== 'function') return;
   const orig = window.goPage;
   window.goPage = function(name, el){
     const r = orig.apply(this, arguments);
-    if (['overview','leads','customers'].includes(name)) {
-      ssSilentSyncThrottled();
-    }
     if (name === 'products') {
       try { checkLowStockNotifs(); } catch(_){}
     }
