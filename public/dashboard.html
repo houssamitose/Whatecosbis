@@ -2129,7 +2129,17 @@ tr.clickable:hover{background:var(--s2)!important}
     <!-- ══ SIMULATOR ══ -->
     <div class="page" id="page-simulator">
       <div class="sim-page-wrap">
-      <div class="sec" style="font-size:14px;margin-bottom:4px"><i class="ti ti-calculator"></i>COD Simulator</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px">
+        <div class="sec" style="font-size:14px;margin:0"><i class="ti ti-calculator"></i>COD Simulator</div>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <select id="sim-scenario-sel" class="fsel" style="font-size:12px;padding:4px 8px;height:30px" onchange="simLoadScenario()">
+            <option value="">Charger un scénario…</option>
+          </select>
+          <input type="text" id="sim-scenario-name" class="fsel" placeholder="Nom du scénario" style="font-size:12px;padding:4px 8px;height:30px;width:160px">
+          <button class="btn btn-p" onclick="simSaveScenario()" style="padding:5px 12px;font-size:12px"><i class="ti ti-device-floppy"></i>Sauvegarder</button>
+          <button class="btn" onclick="simDeleteScenario()" style="padding:5px 10px;font-size:12px;border:1px solid var(--bd);background:var(--s2)" title="Supprimer le scénario sélectionné"><i class="ti ti-trash" style="color:var(--bad)"></i></button>
+        </div>
+      </div>
       <div style="font-size:12px;color:var(--m1);margin-bottom:6px">Plug in your numbers — projections update live.</div>
       <div class="sim-grid-2">
         <div class="sim-card">
@@ -3205,6 +3215,19 @@ tr.clickable:hover{background:var(--s2)!important}
         </div>
       </div>
       <div id="imports-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px"></div>
+
+      <!-- Google Sheets sources panel -->
+      <div class="card" style="margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:2px 0" onclick="document.getElementById('sheet-sources-body').style.display=document.getElementById('sheet-sources-body').style.display==='none'?'block':'none'">
+          <div style="font-size:13px;font-weight:700;color:var(--m1)"><i class="ti ti-table-import" style="margin-right:6px;color:var(--acc)"></i>Google Sheets Sources</div>
+          <span style="font-size:11px;color:var(--m2)">Cliquer pour déplier / replier</span>
+        </div>
+        <div id="sheet-sources-body" style="display:none;margin-top:10px">
+          <div id="sheet-sources-list"></div>
+          <button class="btn btn-p" onclick="addSheetSource()" style="margin-top:8px;padding:5px 14px;font-size:12px"><i class="ti ti-plus"></i> Ajouter une source</button>
+        </div>
+      </div>
+
       <div class="card">
         <div style="overflow-x:auto">
           <table class="ov-prods-table" id="imports-table">
@@ -3221,14 +3244,17 @@ tr.clickable:hover{background:var(--s2)!important}
     <div class="page" id="page-customers">
       <div class="cust-toolbar">
         <div class="sec" style="margin:0"><i class="ti ti-address-book"></i>Customers <span style="font-size:11px;color:var(--m1);font-weight:500;margin-left:6px">— grouped from SpaceSeller orders</span></div>
-        <input type="text" class="cust-search" id="cust-search" placeholder="Search by name or phone…" oninput="renderCustomersPage()">
-        <select class="cust-search" id="cust-filter-tier" onchange="renderCustomersPage()" style="min-width:160px">
-          <option value="all">All tiers</option>
-          <option value="champion">Champions (3+ orders)</option>
-          <option value="loyal">Loyal (2 orders)</option>
-          <option value="new">New (1 order)</option>
-          <option value="lost">Lost (no order 60+ days)</option>
-        </select>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="text" class="cust-search" id="cust-search" placeholder="Search by name or phone…" oninput="renderCustomersPage()">
+          <select class="cust-search" id="cust-filter-tier" onchange="renderCustomersPage()" style="min-width:160px">
+            <option value="all">All tiers</option>
+            <option value="champion">Champions (3+ orders)</option>
+            <option value="loyal">Loyal (2 orders)</option>
+            <option value="new">New (1 order)</option>
+            <option value="lost">Lost (no order 60+ days)</option>
+          </select>
+          <button class="btn" style="border:1px solid var(--bd);background:var(--s2);padding:6px 12px;font-size:12px" onclick="exportCustomersCsv()" title="Exporter la liste filtrée en CSV"><i class="ti ti-download"></i>Export CSV</button>
+        </div>
       </div>
       <div class="kpi-g mb14">
         <div class="kpi"><div class="kpi-lbl"><i class="ti ti-users"></i>Total Customers</div><div class="kpi-val" id="cust-k-total">0</div></div>
@@ -4655,6 +4681,7 @@ function openWorkflowByName(name, el){
 let tasks = readJSON('ecopro_tasks', null);
 // leads come from SpaceSeller API — never hardcoded
 let leads = [];
+const _orderProdCache = {}; /* lazy cache: order_id → product name string */
 function saveLeads(){ /* no-op: leads come from API */ }
 
 if(tasks){
@@ -5965,7 +5992,7 @@ function goPage(n,el){
   if(n==='overview') renderOverview();
   if(n==='tasks'){ taskDateFilter=document.getElementById('tdate').value||''; renderKanban(); }
   if(n==='leads') renderLeads();
-  if(n==='simulator') updateSimulator();
+  if(n==='simulator'){ updateSimulator(); simRefreshScenarioDropdown(); }
   if(n==='products') renderProducts();
   if(n==='sprints') renderSprints();
   if(n==='downloader') renderDownloader();
@@ -6803,10 +6830,15 @@ function renderLeads(){
   tb.innerHTML=d.length
     ? d.map((o,i)=>{
         // Show each product line: name × qty @ unit_price
-        const prodsHTML=(o.products||[]).map(p=>`
-          <div style="font-size:11px;white-space:nowrap">
-            ${xss(p.name||p.sku||'–')}
-          </div>`).join('')||'<span style="color:var(--m2)">–</span>';
+        const _oid = String(o.order_id||o.id||'');
+        const prodsHTML=(o.products||[]).length
+          ? (o.products||[]).map(p=>`
+              <div style="font-size:11px;white-space:nowrap">
+                ${xss(p.name||p.sku||'–')}
+              </div>`).join('')
+          : (_orderProdCache[_oid]
+              ? `<div style="font-size:11px;color:var(--m2);white-space:nowrap">${xss(_orderProdCache[_oid])}</div>`
+              : '<span style="color:var(--m2)">–</span>');
         const qtyHTML=(o.products||[]).map(p=>`<div style="font-size:11px">${p.quantity||1}</div>`).join('');
         const upHTML=(o.products||[]).map(p=>`<div style="font-size:11px">${parseFloat(p.unit_price||0).toLocaleString()}</div>`).join('');
         const dateRaw=o.date_order||o.created_at||'';
@@ -7002,6 +7034,50 @@ function updateSimulator(){
   // Color net result
   const netEl=document.getElementById('sim-net');
   netEl.style.color=resultNet>=0?'var(--green)':'var(--red)';
+}
+
+/* ── Simulator scenarios ── */
+const _SIM_IDS = ['sim-leads','sim-confirm-rate-in','sim-deliver-rate-in','sim-ads-cost','sim-prod-cost','sim-ship-cost','sim-lead-cost','sim-return-cost','sim-sell-price','sim-ref','sim-ann','sim-loyer','sim-bills','sim-sal1','sim-sal2','sim-phone','sim-store','sim-other'];
+function simRefreshScenarioDropdown(){
+  const scenarios = LS.get('sim_scenarios')||[];
+  const sel = document.getElementById('sim-scenario-sel');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">Charger un scénario…</option>' + scenarios.map((s,i)=>`<option value="${i}">${xss(s.name)}</option>`).join('');
+}
+function simSaveScenario(){
+  const name = (document.getElementById('sim-scenario-name')?.value||'').trim();
+  if(!name){ showToast('Donner un nom au scénario'); return; }
+  const values = {};
+  _SIM_IDS.forEach(id=>{ const el=document.getElementById(id); if(el) values[id]=el.value; });
+  const scenarios = LS.get('sim_scenarios')||[];
+  const existing = scenarios.findIndex(s=>s.name===name);
+  if(existing>=0) scenarios[existing]={name,values}; else scenarios.push({name,values});
+  LS.set('sim_scenarios',scenarios);
+  simRefreshScenarioDropdown();
+  showToast(`Scénario "${name}" sauvegardé`);
+}
+function simLoadScenario(){
+  const sel = document.getElementById('sim-scenario-sel');
+  const idx = parseInt(sel?.value);
+  if(isNaN(idx)) return;
+  const scenarios = LS.get('sim_scenarios')||[];
+  const s = scenarios[idx]; if(!s) return;
+  _SIM_IDS.forEach(id=>{ const el=document.getElementById(id); if(el && s.values[id]!==undefined) el.value=s.values[id]; });
+  const nameEl = document.getElementById('sim-scenario-name'); if(nameEl) nameEl.value = s.name;
+  updateSimulator();
+  showToast(`Scénario "${s.name}" chargé`);
+}
+function simDeleteScenario(){
+  const sel = document.getElementById('sim-scenario-sel');
+  const idx = parseInt(sel?.value);
+  if(isNaN(idx)){ showToast('Sélectionner un scénario à supprimer'); return; }
+  const scenarios = LS.get('sim_scenarios')||[];
+  const name = scenarios[idx]?.name;
+  if(!name || !confirm(`Supprimer le scénario "${name}" ?`)) return;
+  scenarios.splice(idx,1);
+  LS.set('sim_scenarios',scenarios);
+  simRefreshScenarioDropdown();
+  showToast(`Scénario "${name}" supprimé`);
 }
 
 /* ═══════════════════════════════════════
@@ -11207,6 +11283,10 @@ function closeOrderDetailModal(){ document.getElementById('modal-order-detail').
 
 function renderOrderDetail(d){
   if(!d) return;
+  /* populate product name cache */
+  if(d.order_id && (d.products||[]).length){
+    _orderProdCache[String(d.order_id)] = (d.products||[]).map(p=>p.name||p.sku||'').filter(Boolean).join(', ');
+  }
   document.getElementById('od-title').textContent = `Order #${d.order_id}`;
   document.getElementById('od-sub').textContent  = `${d.fullname || '–'} · ${(d.date_order||'').slice(0,16)}`;
   const orderHistRows = (d.order_status_history||[]).map(h=>`
@@ -12384,18 +12464,73 @@ async function renderImports(){
   }
 }
 async function triggerSheetsPoll(){
-  try {
-    showToast('Sync en cours…');
-    const r = await fetch('/api/leads/sheets-poll', { method: 'POST', cache: 'no-store' });
-    if (!r.ok) { showToast('Endpoint pas encore d&eacute;ploy&eacute; (HTTP ' + r.status + ')'); return; }
-    const j = await r.json();
-    if (j.success) {
-      showToast(`✓ ${j.sent||0} envoy&eacute;s · ${j.duplicates||0} dup · ${j.failed||0} fail`);
-      setTimeout(renderImports, 800);
-    } else {
-      showToast('Erreur: ' + (j.error || 'unknown'));
-    }
-  } catch(e) { showToast('Erreur r&eacute;seau: ' + (e.message||e)); }
+  const sources = LS.get('sheet_sources')||[];
+  if(!sources.length){
+    /* fall back to env-configured sheet */
+    try {
+      showToast('Sync en cours…');
+      const r = await fetch('/api/leads/sheets-poll', { method: 'POST', cache: 'no-store' });
+      if (!r.ok) { showToast('Endpoint pas encore d&eacute;ploy&eacute; (HTTP ' + r.status + ')'); return; }
+      const j = await r.json();
+      if (j.success) {
+        showToast(`✓ ${j.sent||0} envoy&eacute;s · ${j.duplicates||0} dup · ${j.failed||0} fail`);
+        setTimeout(renderImports, 800);
+      } else { showToast('Erreur: ' + (j.error || 'unknown')); }
+    } catch(e) { showToast('Erreur r&eacute;seau: ' + (e.message||e)); }
+    return;
+  }
+  showToast(`Sync ${sources.length} source(s)…`);
+  let totalSent=0, totalDup=0, totalFail=0;
+  for(const src of sources){
+    try {
+      const params = new URLSearchParams({ sheetId: src.sheetId, gid: src.gid||'0' });
+      const r = await fetch(`/api/leads/sheets-poll?${params}`, { method: 'POST', cache: 'no-store' });
+      if(!r.ok){ showToast(`[${src.name}] HTTP ${r.status}`); continue; }
+      const j = await r.json();
+      if(j.success){ totalSent+=j.sent||0; totalDup+=j.duplicates||0; totalFail+=j.failed||0; }
+      else showToast(`[${src.name}] ${j.error||'Erreur'}`);
+    } catch(e){ showToast(`[${src.name}] ${e.message||e}`); }
+  }
+  showToast(`✓ ${totalSent} envoy&eacute;s · ${totalDup} dup · ${totalFail} fail`);
+  setTimeout(renderImports, 800);
+}
+
+/* ── Sheet sources CRUD ── */
+function renderSheetSources(){
+  const sources = LS.get('sheet_sources')||[];
+  const el = document.getElementById('sheet-sources-list');
+  if(!el) return;
+  if(!sources.length){
+    el.innerHTML = '<div style="font-size:12px;color:var(--m2);padding:4px 0">Aucune source configurée. Cliquez + pour en ajouter.</div>';
+    return;
+  }
+  el.innerHTML = sources.map((s,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+      <input class="fsel" value="${xss(s.name)}" placeholder="Nom" style="width:120px;font-size:12px;padding:4px 8px" oninput="sheetSourceFieldUpdate(${i},'name',this.value)">
+      <input class="fsel" value="${xss(s.sheetId)}" placeholder="Sheet ID" style="width:220px;font-size:12px;padding:4px 8px;font-family:monospace" oninput="sheetSourceFieldUpdate(${i},'sheetId',this.value)">
+      <input class="fsel" value="${xss(s.gid||'0')}" placeholder="GID (tab)" style="width:80px;font-size:12px;padding:4px 8px;font-family:monospace" oninput="sheetSourceFieldUpdate(${i},'gid',this.value)">
+      <button class="btn" onclick="removeSheetSource(${i})" title="Supprimer" style="padding:4px 10px;font-size:12px"><i class="ti ti-trash" style="color:var(--bad)"></i></button>
+    </div>`).join('');
+}
+function addSheetSource(){
+  const sources = LS.get('sheet_sources')||[];
+  sources.push({name:'Source '+(sources.length+1), sheetId:'', gid:'0'});
+  LS.set('sheet_sources', sources);
+  renderSheetSources();
+  document.getElementById('sheet-sources-body').style.display='block';
+}
+function sheetSourceFieldUpdate(idx, field, val){
+  const sources = LS.get('sheet_sources')||[];
+  if(sources[idx]) sources[idx][field]=val;
+  LS.set('sheet_sources', sources);
+}
+function removeSheetSource(idx){
+  const sources = LS.get('sheet_sources')||[];
+  const name = sources[idx]?.name||'cette source';
+  if(!confirm(`Supprimer "${name}" ?`)) return;
+  sources.splice(idx,1);
+  LS.set('sheet_sources', sources);
+  renderSheetSources();
 }
 
 function renderCustomersPage(){
@@ -12423,17 +12558,24 @@ function renderCustomersPage(){
     </div>`;
     return;
   }
+  const custNotes = LS.get('cust_notes')||{};
   grid.innerHTML = filtered.map(c=>{
     const initials = c.name ? c.name.split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase() : (c.phone||'?').slice(0,2);
+    const cn = custNotes[c.phone];
+    const hasTags = cn?.tags?.length>0;
+    const hasNote = (cn?.note||'').trim().length>0;
+    const tagsHtml = hasTags ? cn.tags.map(t=>`<span style="font-size:10px;padding:1px 7px;border-radius:999px;background:var(--acc);color:#fff;font-weight:600">${t}</span>`).join('') : '';
     return `<div class="cust-card" onclick="openCustomerDetail('${xss(c.phone)}')">
       <div class="cust-card-head">
         <div class="cust-avatar">${initials}</div>
         <div style="flex:1;min-width:0">
-          <div class="cust-name">${xss(c.name || 'Unknown')}</div>
+          <div class="cust-name">${xss(c.name || 'Unknown')}${hasNote?'<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--acc);margin-left:6px;vertical-align:middle" title="Note"></span>':''}</div>
           <div class="cust-phone">+${xss(c.phone)}</div>
         </div>
         <span class="cust-tier ${c.tier}">${c.tier}</span>
       </div>
+      ${hasTags?`<div style="display:flex;gap:4px;flex-wrap:wrap;padding:6px 0 2px">${tagsHtml}</div>`:''}
+
       <div class="cust-stats">
         <div class="cust-stat"><div class="cust-stat-label">Orders</div><div class="cust-stat-value">${c.orderCount}</div></div>
         <div class="cust-stat"><div class="cust-stat-label">LTV</div><div class="cust-stat-value green">${c.total.toLocaleString(undefined,{maximumFractionDigits:0})}</div></div>
@@ -12461,6 +12603,13 @@ function openCustomerDetail(phone){
       <td>${xss(ship)}</td>
     </tr>`;
   }).join('');
+  const notes = LS.get('cust_notes')||{};
+  const custNote = notes[c.phone]||{note:'',tags:[]};
+  const allTags = ['VIP','Relancer','Fidèle','Problème','Bloqué'];
+  const tagBtns = allTags.map(t=>{
+    const active = (custNote.tags||[]).includes(t);
+    return `<button onclick="custToggleTag('${c.phone}','${t}')" style="padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid ${active?'var(--acc)':'var(--bd)'};background:${active?'var(--acc)':'var(--s2)'};color:${active?'#fff':'var(--m1)'}">${t}</button>`;
+  }).join('');
   document.getElementById('cust-modal-body').innerHTML = `
     <div class="od-grid" style="margin-bottom:14px">
       <div class="od-field"><div class="od-lbl">Tier</div><div class="od-val"><span class="cust-tier ${c.tier}" style="font-size:11px">${c.tier}</span></div></div>
@@ -12470,6 +12619,12 @@ function openCustomerDetail(phone){
       <div class="od-field"><div class="od-lbl">Delivered</div><div class="od-val">${c.delivered}/${c.orderCount}</div></div>
       <div class="od-field"><div class="od-lbl">Days since last</div><div class="od-val">${c.daysSince>=999?'never':c.daysSince}</div></div>
     </div>
+    <div style="background:var(--s2);border:1px solid var(--bd);border-radius:9px;padding:12px 14px;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--m1);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">Tags</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${tagBtns}</div>
+      <div style="font-size:11px;font-weight:700;color:var(--m1);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em">Note</div>
+      <textarea id="cust-note-ta" placeholder="Ajouter une note sur ce client…" oninput="custSaveNote('${c.phone}')" style="width:100%;min-height:64px;background:var(--s1);border:1px solid var(--bd);border-radius:7px;padding:8px 10px;color:var(--txt);font-family:inherit;font-size:12.5px;outline:none;resize:vertical">${xss(custNote.note||'')}</textarea>
+    </div>
     <div class="cust-detail-orders">
       <table><thead><tr><th>Order #</th><th>Products</th><th>Date</th><th>Total</th><th>Status</th><th>Delivery</th></tr></thead>
       <tbody>${ordersRows}</tbody></table>
@@ -12477,6 +12632,52 @@ function openCustomerDetail(phone){
   document.getElementById('modal-customer').classList.add('open');
 }
 function closeCustomerModal(){ document.getElementById('modal-customer').classList.remove('open'); }
+
+function exportCustomersCsv(){
+  const customers = getCustomers();
+  const q = (document.getElementById('cust-search')?.value||'').toLowerCase().trim();
+  const tierFilter = document.getElementById('cust-filter-tier')?.value||'all';
+  let rows = customers;
+  if(q) rows = rows.filter(c=>(c.name||'').toLowerCase().includes(q)||(c.phone||'').includes(q));
+  if(tierFilter!=='all') rows = rows.filter(c=>c.tier===tierFilter);
+  if(!rows.length){ showToast('Aucun client à exporter'); return; }
+  const notes = LS.get('cust_notes')||{};
+  const headers = ['Phone','Name','Tier','Orders','LTV (MAD)','Avg Order (MAD)','Confirm Rate (%)','Delivered','Days Since Last','Note'];
+  const csv = [headers.join(','), ...rows.map(c=>[
+    `"${c.phone||''}"`,
+    `"${(c.name||'').replace(/"/g,'""')}"`,
+    `"${c.tier||''}"`,
+    c.orderCount||0,
+    c.total||0,
+    c.avgOrderValue||0,
+    c.confirmRate||0,
+    c.delivered||0,
+    c.daysSince>=999?'':c.daysSince,
+    `"${(notes[c.phone]?.note||'').replace(/"/g,'""')}"`,
+  ].join(','))];
+  const blob = new Blob([csv.join('\n')],{type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`customers-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  showToast(`Exported ${rows.length} customers`);
+}
+function custSaveNote(phone){
+  const notes = LS.get('cust_notes')||{};
+  if(!notes[phone]) notes[phone]={note:'',tags:[]};
+  notes[phone].note = document.getElementById('cust-note-ta')?.value||'';
+  LS.set('cust_notes', notes);
+}
+function custToggleTag(phone, tag){
+  const notes = LS.get('cust_notes')||{};
+  if(!notes[phone]) notes[phone]={note:'',tags:[]};
+  const tags = notes[phone].tags||[];
+  const idx = tags.indexOf(tag);
+  if(idx>=0) tags.splice(idx,1); else tags.push(tag);
+  notes[phone].tags = tags;
+  LS.set('cust_notes', notes);
+  /* re-open modal to refresh tags */
+  openCustomerDetail(phone);
+}
 
 
 
@@ -13630,371 +13831,4 @@ function bcRenderEnhanced(pid){
         <span>Spend: <strong>${m.spend.toLocaleString(undefined,{maximumFractionDigits:0})} MAD</strong></span>
         <span>Purch: <strong>${m.purchases||0}</strong></span>
         <span>Revenue: <strong>${m.revenue.toLocaleString(undefined,{maximumFractionDigits:0})}</strong></span>
-        <span>ROAS: <strong style="color:${m.roas>=2?'var(--green)':m.roas>=1?'var(--amber)':'var(--red)'}">${m.roas.toFixed(2)}x</strong></span>
-      </div>
-    </div>`;
-  }).join('');
-}
-function bcSetField(pid, idx, field, value){
-  const p = (typeof products!=='undefined'?products:[]).find(x=>x.id===pid); if(!p) return;
-  if(!p.bestCreatives) p.bestCreatives = [];
-  if(!p.bestCreatives[idx]) return;
-  p.bestCreatives[idx][field] = value;
-  if(typeof saveProducts==='function') saveProducts();
-  bcRenderEnhanced(pid);
-}
-function bcRemove(pid, idx){
-  if(!confirm('Remove this creative?')) return;
-  const p = (typeof products!=='undefined'?products:[]).find(x=>x.id===pid); if(!p) return;
-  p.bestCreatives.splice(idx, 1);
-  if(typeof saveProducts==='function') saveProducts();
-  bcRenderEnhanced(pid);
-}
-
-/* ── Team Results page ── */
-let trMonth = new Date(); /* current month being viewed */
-function trChangeMonth(dir){
-  trMonth.setMonth(trMonth.getMonth() + dir);
-  renderTeamResults();
-}
-function renderTeamResults(){
-  const lbl = document.getElementById('tr-month-label');
-  if(lbl) lbl.textContent = trMonth.toLocaleString('en-GB', { month:'long', year:'numeric' });
-  const ym = trMonth.getFullYear()+'-'+String(trMonth.getMonth()+1).padStart(2,'0');
-
-  /* Gather all creatives across all products */
-  const allCreatives = [];
-  (typeof products!=='undefined'?products:[]).forEach(p=>{
-    (p.bestCreatives||[]).forEach((cr,i)=>{
-      const m = computeCreativeRoas(cr);
-      const status = getCreativeStatus(cr);
-      allCreatives.push({
-        productName: p.name, productId: p.id, idx:i,
-        creator: cr.creator || 'Unassigned',
-        link: cr.link, status,
-        spend: m.spend, revenue: m.revenue, roas: m.roas,
-      });
-    });
-  });
-
-  /* Group by creator */
-  const byCreator = {};
-  allCreatives.forEach(cr=>{
-    if(!byCreator[cr.creator]) byCreator[cr.creator] = [];
-    byCreator[cr.creator].push(cr);
-  });
-
-  /* Render cards */
-  const board = document.getElementById('tr-board');
-  if(!board) return;
-  const creators = Object.keys(byCreator).sort();
-  if(!creators.length){
-    board.innerHTML = '<div style="grid-column:1/-1;padding:36px 20px;text-align:center;color:var(--m2)"><i class="ti ti-users-off" style="font-size:32px;display:block;margin-bottom:10px;opacity:.4"></i><p style="font-size:13px;font-weight:600">No creatives tracked yet</p><p style="font-size:11px;margin-top:4px">Open a product → Best Creatives → assign a Creator to each link.</p></div>';
-    return;
-  }
-  board.innerHTML = creators.map(name=>{
-    const items = byCreator[name];
-    const wins = items.filter(x=>x.status==='winning').length;
-    const tested = items.length;
-    const winRate = tested>0 ? Math.round(wins/tested*100) : 0;
-    const totalSpend = items.reduce((s,x)=>s+x.spend, 0);
-    const totalRev = items.reduce((s,x)=>s+x.revenue, 0);
-    const roas = totalSpend > 0 ? +(totalRev/totalSpend).toFixed(2) : 0;
-    const tier = winRate >= 50 ? 'champion' : winRate >= 25 ? 'loyal' : 'starter';
-    const tierLabel = tier==='champion'?'Top':'loyal'===tier?'Strong':'Learning';
-    const initials = name.split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase()||'?';
-
-    return `<div class="tr-card ${tier}">
-      <div class="tr-card-head">
-        <div class="tr-avatar">${initials}</div>
-        <div style="flex:1;min-width:0">
-          <div class="tr-name">${xss(name)}</div>
-          <div class="tr-role">${tested} creative${tested>1?'s':''} · ${wins} winning</div>
-        </div>
-        <span class="tr-tier-badge ${tier}">${tierLabel}</span>
-      </div>
-      <div class="tr-stats-grid">
-        <div class="tr-stat"><div class="tr-stat-label">Win rate</div><div class="tr-stat-value ${winRate>=50?'green':''}">${winRate}%</div></div>
-        <div class="tr-stat"><div class="tr-stat-label">Spend</div><div class="tr-stat-value">${Math.round(totalSpend).toLocaleString()}</div></div>
-        <div class="tr-stat"><div class="tr-stat-label">ROAS</div><div class="tr-stat-value ${roas>=2?'green':roas<1?'red':''}">${roas.toFixed(2)}x</div></div>
-      </div>
-      <div class="tr-creatives-list">
-        <div class="tr-creatives-title">Creatives this period</div>
-        ${items.slice(0,8).map(cr=>`
-          <div class="tr-creative-item ${cr.status}">
-            <i class="ti ti-${cr.status==='winning'?'trophy':cr.status==='failed'?'x':'flask'}"></i>
-            <span class="tr-creative-name">${xss(cr.productName)}</span>
-            <span class="tr-creative-roas">${cr.roas.toFixed(2)}x</span>
-          </div>`).join('')}
-        ${items.length>8?`<div style="font-size:10.5px;color:var(--m2);padding:4px 0">+${items.length-8} more…</div>`:''}
-      </div>
-    </div>`;
-  }).join('');
-}
-
-
-
-
-/* ═══════════════════════════════════════
-   TOP CREATIVES (today) — pulled from Meta Ads insights
-═══════════════════════════════════════ */
-function renderTopCreatives(){
-  const tbody = document.getElementById('ov-creatives-tbody'); if(!tbody) return;
-  const camps = (typeof af_campaigns !== 'undefined' && Array.isArray(af_campaigns)) ? af_campaigns : [];
-  if(!camps.length){
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--m2)">No campaigns synced yet — go to Campaigns page and connect an ad account.</td></tr>`;
-    return;
-  }
-  /* Compute metrics + sort by spend desc */
-  const rows = camps.map(c=>{
-    const spend = parseFloat(c.spend||0);
-    const impressions = parseInt(c.impressions||0);
-    const clicks = parseInt(c.clicks||0);
-    const purchases = parseInt(c.purch||0);
-    const ctr = parseFloat(c.ctr||0);
-    const cpm = parseFloat(c.cpm||0);
-    /* Hook rate = 3-sec views / impressions. Approximation: if no video data, use CTR/2 as a proxy */
-    const hookRate = c.video_3sec ? Math.round((c.video_3sec/impressions)*100*10)/10 : 0;
-    const cpa = purchases > 0 ? +(spend/purchases).toFixed(2) : 0;
-    return { ...c, spend, impressions, clicks, purchases, ctr, cpm, hookRate, cpa };
-  }).sort((a,b)=>b.spend-a.spend).slice(0,15);
-
-  const fmt = n => Math.round(n||0).toLocaleString();
-  const cls = (val, good, bad) => val >= good ? 'green' : val <= bad ? 'red' : '';
-  tbody.innerHTML = rows.map(r=>`
-    <tr>
-      <td>
-        <div class="ov-prod-cell">
-          <div class="ov-prod-img"><i class="ti ti-${r.status==='ACTIVE'?'player-play':'player-pause'}" style="font-size:13px;color:var(--${r.status==='ACTIVE'?'green':'m2'})"></i></div>
-          <div class="ov-prod-meta">
-            <div class="ov-prod-name">${xss(r.name||'(unnamed)')}</div>
-            <div class="ov-prod-sku">${xss(r.objective||'')} · ${xss(r.status||'')}</div>
-          </div>
-        </td>
-        <td><span class="ov-num muted">${xss(r.accName||'')}</span></td>
-        <td style="text-align:right" class="ov-num">${fmt(r.spend)}</td>
-        <td style="text-align:right" class="ov-num">${fmt(r.impressions)}</td>
-        <td style="text-align:right"><span class="ov-rate-tag ${r.hookRate>=25?'good':r.hookRate>=15?'mid':'bad'}">${r.hookRate?r.hookRate+'%':'—'}</span></td>
-        <td style="text-align:right"><span class="ov-rate-tag ${r.ctr>=2?'good':r.ctr>=1?'mid':'bad'}">${r.ctr.toFixed(2)}%</span></td>
-        <td style="text-align:right" class="ov-num ${cls(r.cpm, 0, 50)}">${r.cpm.toFixed(2)}</td>
-        <td style="text-align:right" class="ov-num ${cls(50-r.cpa, 0, 0)}">${r.cpa ? r.cpa.toFixed(2) : '—'}</td>
-        <td style="text-align:right" class="ov-num">${fmt(r.purchases)}</td>
-      </tr>`).join('');
-}
-
-/* ══ INIT ══ */
-seedAuth();
-applyAuthUI();
-
-/* Restore cached leads/orders from localStorage so KPIs work before Sync is clicked */
-try {
-  const cached = localStorage.getItem('ecospro_leads');
-  if (cached) {
-    const arr = JSON.parse(cached);
-    if (Array.isArray(arr) && arr.length) {
-      leads = arr;
-      ssOrders = arr;
-    }
-  }
-  const cachedStat = localStorage.getItem('ecos_ss_statuses');
-  if (cachedStat) {
-    try { SS_STATUSES = JSON.parse(cachedStat) || SS_STATUSES; } catch(_){}
-  }
-} catch(_){}
-
-/* Helper: poll all tracked order IDs in client-side chunks.
-   Why chunks: a single big request to /api/spaceseller/orders?ids=... would
-   exceed Vercel's 10s function timeout once we cross ~50 ids. We slice into
-   chunks of 25 and gap them with 200 ms to also avoid SpaceSeller's HTTP 429
-   rate-limit. Result: predictable, never overwrites cache with partial data. */
-
-let _ssSyncInFlight = false;
-async function ssSilentSync(){
-  if (_ssSyncInFlight) return null;
-  _ssSyncInFlight = true;
-  try {
-    const ids = (typeof ssTrackedIds === 'function') ? ssTrackedIds() : [];
-    if (!ids.length) return null;
-    const token = getSpaceSellerToken();
-    const chunkSize = 25;
-    const merged = [];
-    const errors = [];
-    for (let i = 0; i < ids.length; i += chunkSize) {
-      const chunk = ids.slice(i, i + chunkSize);
-      let r;
-      try {
-        const headers = { 'Accept': 'application/json' };
-        if (token) headers['Authorization'] = 'Bearer ' + token;
-        r = await fetch('/api/spaceseller/orders?ids=' + encodeURIComponent(chunk.join(',')), { headers, cache:'no-store' });
-      } catch(e) { errors.push({chunkStart:i, error:e.message}); continue; }
-      if (!r.ok) { errors.push({chunkStart:i, status:r.status}); continue; }
-      const json = await r.json().catch(()=>null);
-      if (json?.orders?.length) merged.push(...json.orders);
-      if (json?.errors?.length) errors.push(...json.errors);
-      if (merged.length) {
-        try {
-          const prior = JSON.parse(localStorage.getItem('ecospro_leads')||'[]');
-          const byId = new Map();
-          prior.forEach(o => { const k = o.order_id || o.id; if (k) byId.set(String(k), o); });
-          merged.forEach(o => { const k = o.order_id || o.id; if (k) byId.set(String(k), o); });
-          const combined = [...byId.values()];
-          ssOrders = combined; leads = combined;
-          localStorage.setItem('ecospro_leads', JSON.stringify(combined));
-          if (typeof renderOverview === 'function' && cpage === 'overview') renderOverview();
-          if (typeof renderLeads === 'function' && cpage === 'leads') renderLeads();
-          if (typeof renderSSAll === 'function' && cpage === 'spaceseller') renderSSAll();
-          if (typeof renderCustomersPage === 'function' && cpage === 'customers') renderCustomersPage();
-        } catch(_){}
-      }
-      await new Promise(rr => setTimeout(rr, 200));
-    }
-    return { count: merged.length, requested: ids.length, errors };
-  } catch(_) { return { count:0, requested:ids.length, errors:ids.length }; }
-  finally { _ssSyncInFlight = false; }
-}
-
-function ssSilentSyncThrottled(){
-  if (_ssSyncInFlight) return;
-  const now = Date.now();
-  if (now - _ssLastSync < 30000) return;
-  _ssLastSync = now;
-  ssSilentSync();
-}
-
-let _ssLastSync = 0;
-
-document.addEventListener('keydown', (e) => {
-  if (e.key !== 'Escape') return;
-  const opened = document.querySelectorAll('.moverlay.open, .script-modal-overlay.open');
-  if (!opened.length) return;
-  opened.forEach(el => el.classList.remove('open'));
-  document.getElementById('gsearch-overlay')?.classList.remove('open');
-}, true);
-
-async function loadFromServerCache(){
-  try {
-    const r = await fetch('/api/leads?limit=5000', { cache: 'no-store' });
-    if (!r.ok) return false;
-    const j = await r.json();
-    if (!j?.success || !Array.isArray(j.orders) || !j.orders.length) return false;
-    ssOrders = j.orders;
-    leads = j.orders;
-    try { localStorage.setItem('ecospro_leads', JSON.stringify(j.orders)); } catch(_){}
-    if (typeof renderOverview === 'function' && cpage === 'overview') renderOverview();
-    if (typeof renderLeads === 'function' && cpage === 'leads') renderLeads();
-    if (typeof renderSSAll === 'function' && cpage === 'spaceseller') renderSSAll();
-    if (typeof renderCustomersPage === 'function' && cpage === 'customers') renderCustomersPage();
-    return true;
-  } catch(_) { return false; }
-}
-
-function triggerServerSync(){
-  try { fetch('/api/leads/sync', { method:'POST', cache:'no-store' }).catch(()=>{}); } catch(_){}
-}
-
-(async function bootProductsFromServer(){
-  try {
-    const serverProducts = await loadProductsFromServer();
-    if (Array.isArray(serverProducts) && serverProducts.length) {
-      products = serverProducts;
-      LS.setItem('ecopro_products', JSON.stringify(products));
-      try { if (typeof renderProducts === 'function') renderProducts(); } catch(_){}
-      try { checkLowStockNotifs(); } catch(_){}
-    } else if (Array.isArray(products) && products.length) {
-      syncProductsToServer();
-    }
-  } catch(e) { console.warn('[crm-sync] boot products error', e?.message || e); }
-})();
-
-(async function bootTasksFromServer(){
-  try {
-    const serverTasks = await loadTasksFromServer();
-    if (Array.isArray(serverTasks) && serverTasks.length) {
-      tasks = serverTasks;
-      LS.setItem('ecopro_tasks', JSON.stringify(tasks));
-      try { if (typeof renderTasks === 'function') renderTasks(); } catch(_){}
-    } else if (Array.isArray(tasks) && tasks.length) {
-      syncTasksToServer();
-    }
-  } catch(e) { console.warn('[crm-sync] boot tasks error', e?.message || e); }
-})();
-
-(async function bootAutoSync(){
-  try { if (typeof fetchSpaceSellerStatuses === 'function') await fetchSpaceSellerStatuses(); } catch(_){}
-  try { checkLowStockNotifs(); } catch(_){}
-  const fromCache = await loadFromServerCache();
-  if (fromCache) {
-    triggerServerSync();
-    try { showToast('✓ ' + leads.length + ' orders loaded from cache'); } catch(_){}
-    return;
-  }
-  const result = await ssSilentSync();
-  if (result && result.count > 0) {
-    try { showToast('✓ ' + result.count + ' orders synced from SpaceSeller'); } catch(_){}
-  }
-})();
-
-(async function bootTeamFromServer(){
-  try {
-    const serverTeam = await loadTeamFromServer();
-    if (Array.isArray(serverTeam) && serverTeam.length) {
-      LS.setItem('ecos_team_members', JSON.stringify(serverTeam));
-    } else {
-      const local = getUsers();
-      if (local.length) syncTeamToServer(local);
-    }
-  } catch(e) { console.warn('[crm-sync] boot team error', e?.message || e); }
-})();
-
-(async function bootSettingsFromServer(){
-  try {
-    const s = await loadSettingsFromServer();
-    if (s) {
-      if (s.low_stock_threshold) localStorage.setItem('ecos_lowstock_threshold', String(s.low_stock_threshold));
-      if (s.theme) try { localStorage.setItem('ecos_theme', s.theme); } catch(_){}
-      try { checkLowStockNotifs(); } catch(_){}
-    } else {
-      const localThresh = localStorage.getItem('ecos_lowstock_threshold');
-      if (localThresh) syncSettingsToServer({ low_stock_threshold: parseInt(localThresh, 10) || 40 });
-    }
-  } catch(e) { console.warn('[crm-sync] boot settings error', e?.message || e); }
-})();
-
-setInterval(() => { if (!document.hidden) ssSilentSyncThrottled(); }, 90000);
-window.addEventListener('focus', () => ssSilentSyncThrottled());
-document.addEventListener('visibilitychange', () => { if (!document.hidden) ssSilentSyncThrottled(); });
-
-(function hookGoPageForSync(){
-  if (typeof window.goPage !== 'function') return;
-  const orig = window.goPage;
-  window.goPage = function(name, el){
-    const r = orig.apply(this, arguments);
-    if (['overview','leads','spaceseller','customers'].includes(name)) {
-      ssSilentSyncThrottled();
-    }
-    if (name === 'products') {
-      try { checkLowStockNotifs(); } catch(_){}
-    }
-    if (name === 'imports') {
-      try { renderImports(); } catch(_){}
-    }
-    return r;
-  };
-})();
-
-</script>
-</body>
-</html>
- === 'products') {
-      try { checkLowStockNotifs(); } catch(_){}
-    }
-    if (name === 'imports') {
-      try { renderImports(); } catch(_){}
-    }
-    return r;
-  };
-})();
-
-</script>
-</body>
-</html>
+        <span>ROAS: <strong style="color:${m.roas>=2?'var(--green)':m.roas>=1?'var(--amber)':'var(--red)'}">${m.roas.toFixed(2)}x</str
