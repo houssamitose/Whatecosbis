@@ -13831,4 +13831,360 @@ function bcRenderEnhanced(pid){
         <span>Spend: <strong>${m.spend.toLocaleString(undefined,{maximumFractionDigits:0})} MAD</strong></span>
         <span>Purch: <strong>${m.purchases||0}</strong></span>
         <span>Revenue: <strong>${m.revenue.toLocaleString(undefined,{maximumFractionDigits:0})}</strong></span>
-        <span>ROAS: <strong style="color:${m.roas>=2?'var(--green)':m.roas>=1?'var(--amber)':'var(--red)'}">${m.roas.toFixed(2)}x</str
+
+        <span>ROAS: <strong style="color:${m.roas>=2?'var(--green)':m.roas>=1?'var(--amber)':'var(--red)'}">${m.roas.toFixed(2)}x</strong></span>
+      </div>
+    </div>`;
+  }).join('');
+}
+function bcSetField(pid, idx, field, value){
+  const p = (typeof products!=='undefined'?products:[]).find(x=>x.id===pid); if(!p) return;
+  if(!p.bestCreatives) p.bestCreatives = [];
+  if(!p.bestCreatives[idx]) return;
+  p.bestCreatives[idx][field] = value;
+  if(typeof saveProducts==='function') saveProducts();
+  bcRenderEnhanced(pid);
+}
+function bcRemove(pid, idx){
+  if(!confirm('Remove this creative?')) return;
+  const p = (typeof products!=='undefined'?products:[]).find(x=>x.id===pid); if(!p) return;
+  p.bestCreatives.splice(idx, 1);
+  if(typeof saveProducts==='function') saveProducts();
+  bcRenderEnhanced(pid);
+}
+
+/* ── Team Results page ── */
+let trMonth = new Date(); /* current month being viewed */
+function trChangeMonth(dir){
+  trMonth.setMonth(trMonth.getMonth() + dir);
+  renderTeamResults();
+}
+function renderTeamResults(){
+  const lbl = document.getElementById('tr-month-label');
+  if(lbl) lbl.textContent = trMonth.toLocaleString('en-GB', { month:'long', year:'numeric' });
+  const ym = trMonth.getFullYear()+'-'+String(trMonth.getMonth()+1).padStart(2,'0');
+
+  /* Gather all creatives across all products */
+  const allCreatives = [];
+  (typeof products!=='undefined'?products:[]).forEach(p=>{
+    (p.bestCreatives||[]).forEach((cr,i)=>{
+      const m = computeCreativeRoas(cr);
+      const status = getCreativeStatus(cr);
+      allCreatives.push({
+        productName: p.name, productId: p.id, idx:i,
+        creator: cr.creator || 'Unassigned',
+        link: cr.link, status,
+        spend: m.spend, revenue: m.revenue, roas: m.roas,
+      });
+    });
+  });
+
+  /* Group by creator */
+  const byCreator = {};
+  allCreatives.forEach(cr=>{
+    if(!byCreator[cr.creator]) byCreator[cr.creator] = [];
+    byCreator[cr.creator].push(cr);
+  });
+
+  /* Render cards */
+  const board = document.getElementById('tr-board');
+  if(!board) return;
+  const creators = Object.keys(byCreator).sort();
+  if(!creators.length){
+    board.innerHTML = '<div style="grid-column:1/-1;padding:36px 20px;text-align:center;color:var(--m2)"><i class="ti ti-users-off" style="font-size:32px;display:block;margin-bottom:10px;opacity:.4"></i><p style="font-size:13px;font-weight:600">No creatives tracked yet</p><p style="font-size:11px;margin-top:4px">Open a product → Best Creatives → assign a Creator to each link.</p></div>';
+    return;
+  }
+  board.innerHTML = creators.map(name=>{
+    const items = byCreator[name];
+    const wins = items.filter(x=>x.status==='winning').length;
+    const tested = items.length;
+    const winRate = tested>0 ? Math.round(wins/tested*100) : 0;
+    const totalSpend = items.reduce((s,x)=>s+x.spend, 0);
+    const totalRev = items.reduce((s,x)=>s+x.revenue, 0);
+    const roas = totalSpend > 0 ? +(totalRev/totalSpend).toFixed(2) : 0;
+    const tier = winRate >= 50 ? 'champion' : winRate >= 25 ? 'loyal' : 'starter';
+    const tierLabel = tier==='champion'?'Top':'loyal'===tier?'Strong':'Learning';
+    const initials = name.split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase()||'?';
+
+    return `<div class="tr-card ${tier}">
+      <div class="tr-card-head">
+        <div class="tr-avatar">${initials}</div>
+        <div style="flex:1;min-width:0">
+          <div class="tr-name">${xss(name)}</div>
+          <div class="tr-role">${tested} creative${tested>1?'s':''} · ${wins} winning</div>
+        </div>
+        <span class="tr-tier-badge ${tier}">${tierLabel}</span>
+      </div>
+      <div class="tr-stats-grid">
+        <div class="tr-stat"><div class="tr-stat-label">Win rate</div><div class="tr-stat-value ${winRate>=50?'green':''}">${winRate}%</div></div>
+        <div class="tr-stat"><div class="tr-stat-label">Spend</div><div class="tr-stat-value">${Math.round(totalSpend).toLocaleString()}</div></div>
+        <div class="tr-stat"><div class="tr-stat-label">ROAS</div><div class="tr-stat-value ${roas>=2?'green':roas<1?'red':''}">${roas.toFixed(2)}x</div></div>
+      </div>
+      <div class="tr-creatives-list">
+        <div class="tr-creatives-title">Creatives this period</div>
+        ${items.slice(0,8).map(cr=>`
+          <div class="tr-creative-item ${cr.status}">
+            <i class="ti ti-${cr.status==='winning'?'trophy':cr.status==='failed'?'x':'flask'}"></i>
+            <span class="tr-creative-name">${xss(cr.productName)}</span>
+            <span class="tr-creative-roas">${cr.roas.toFixed(2)}x</span>
+          </div>`).join('')}
+        ${items.length>8?`<div style="font-size:10.5px;color:var(--m2);padding:4px 0">+${items.length-8} more…</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+
+
+
+/* ═══════════════════════════════════════
+   TOP CREATIVES (today) — pulled from Meta Ads insights
+═══════════════════════════════════════ */
+function renderTopCreatives(){
+  const tbody = document.getElementById('ov-creatives-tbody'); if(!tbody) return;
+  const camps = (typeof af_campaigns !== 'undefined' && Array.isArray(af_campaigns)) ? af_campaigns : [];
+  if(!camps.length){
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--m2)">No campaigns synced yet — go to Campaigns page and connect an ad account.</td></tr>`;
+    return;
+  }
+  /* Compute metrics + sort by spend desc */
+  const rows = camps.map(c=>{
+    const spend = parseFloat(c.spend||0);
+    const impressions = parseInt(c.impressions||0);
+    const clicks = parseInt(c.clicks||0);
+    const purchases = parseInt(c.purch||0);
+    const ctr = parseFloat(c.ctr||0);
+    const cpm = parseFloat(c.cpm||0);
+    /* Hook rate = 3-sec views / impressions. Approximation: if no video data, use CTR/2 as a proxy */
+    const hookRate = c.video_3sec ? Math.round((c.video_3sec/impressions)*100*10)/10 : 0;
+    const cpa = purchases > 0 ? +(spend/purchases).toFixed(2) : 0;
+    return { ...c, spend, impressions, clicks, purchases, ctr, cpm, hookRate, cpa };
+  }).sort((a,b)=>b.spend-a.spend).slice(0,15);
+
+  const fmt = n => Math.round(n||0).toLocaleString();
+  const cls = (val, good, bad) => val >= good ? 'green' : val <= bad ? 'red' : '';
+  tbody.innerHTML = rows.map(r=>`
+    <tr>
+      <td>
+        <div class="ov-prod-cell">
+          <div class="ov-prod-img"><i class="ti ti-${r.status==='ACTIVE'?'player-play':'player-pause'}" style="font-size:13px;color:var(--${r.status==='ACTIVE'?'green':'m2'})"></i></div>
+          <div class="ov-prod-meta">
+            <div class="ov-prod-name">${xss(r.name||'(unnamed)')}</div>
+            <div class="ov-prod-sku">${xss(r.objective||'')} · ${xss(r.status||'')}</div>
+          </div>
+        </td>
+        <td><span class="ov-num muted">${xss(r.accName||'')}</span></td>
+        <td style="text-align:right" class="ov-num">${fmt(r.spend)}</td>
+        <td style="text-align:right" class="ov-num">${fmt(r.impressions)}</td>
+        <td style="text-align:right"><span class="ov-rate-tag ${r.hookRate>=25?'good':r.hookRate>=15?'mid':'bad'}">${r.hookRate?r.hookRate+'%':'—'}</span></td>
+        <td style="text-align:right"><span class="ov-rate-tag ${r.ctr>=2?'good':r.ctr>=1?'mid':'bad'}">${r.ctr.toFixed(2)}%</span></td>
+        <td style="text-align:right" class="ov-num ${cls(r.cpm, 0, 50)}">${r.cpm.toFixed(2)}</td>
+        <td style="text-align:right" class="ov-num ${cls(50-r.cpa, 0, 0)}">${r.cpa ? r.cpa.toFixed(2) : '—'}</td>
+        <td style="text-align:right" class="ov-num">${fmt(r.purchases)}</td>
+      </tr>`).join('');
+}
+
+/* ══ INIT ══ */
+seedAuth();
+applyAuthUI();
+
+/* Restore cached leads/orders from localStorage so KPIs work before Sync is clicked */
+try {
+  const cached = localStorage.getItem('ecospro_leads');
+  if (cached) {
+    const arr = JSON.parse(cached);
+    if (Array.isArray(arr) && arr.length) {
+      leads = arr;
+      ssOrders = arr;
+    }
+  }
+  const cachedStat = localStorage.getItem('ecos_ss_statuses');
+  if (cachedStat) {
+    try { SS_STATUSES = JSON.parse(cachedStat) || SS_STATUSES; } catch(_){}
+  }
+} catch(_){}
+
+/* Helper: poll all tracked order IDs in client-side chunks.
+   Why chunks: a single big request to /api/spaceseller/orders?ids=... would
+   exceed Vercel's 10s function timeout once we cross ~50 ids. We slice into
+   chunks of 25 and gap them with 200 ms to also avoid SpaceSeller's HTTP 429
+   rate-limit. Result: predictable, never overwrites cache with partial data. */
+
+let _ssSyncInFlight = false;
+async function ssSilentSync(){
+  if (_ssSyncInFlight) return null;
+  _ssSyncInFlight = true;
+  try {
+    const ids = (typeof ssTrackedIds === 'function') ? ssTrackedIds() : [];
+    if (!ids.length) return null;
+    const token = getSpaceSellerToken();
+    const chunkSize = 25;
+    const merged = [];
+    const errors = [];
+    for (let i = 0; i < ids.length; i += chunkSize) {
+      const chunk = ids.slice(i, i + chunkSize);
+      let r;
+      try {
+        const headers = { 'Accept': 'application/json' };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        r = await fetch('/api/spaceseller/orders?ids=' + encodeURIComponent(chunk.join(',')), { headers, cache:'no-store' });
+      } catch(e) { errors.push({chunkStart:i, error:e.message}); continue; }
+      if (!r.ok) { errors.push({chunkStart:i, status:r.status}); continue; }
+      const json = await r.json().catch(()=>null);
+      if (json?.orders?.length) merged.push(...json.orders);
+      if (json?.errors?.length) errors.push(...json.errors);
+      if (merged.length) {
+        try {
+          const prior = JSON.parse(localStorage.getItem('ecospro_leads')||'[]');
+          const byId = new Map();
+          prior.forEach(o => { const k = o.order_id || o.id; if (k) byId.set(String(k), o); });
+          merged.forEach(o => { const k = o.order_id || o.id; if (k) byId.set(String(k), o); });
+          const combined = [...byId.values()];
+          ssOrders = combined; leads = combined;
+          localStorage.setItem('ecospro_leads', JSON.stringify(combined));
+          if (typeof renderOverview === 'function' && cpage === 'overview') renderOverview();
+          if (typeof renderLeads === 'function' && cpage === 'leads') renderLeads();
+          if (typeof renderSSAll === 'function' && cpage === 'spaceseller') renderSSAll();
+          if (typeof renderCustomersPage === 'function' && cpage === 'customers') renderCustomersPage();
+        } catch(_){}
+      }
+      await new Promise(rr => setTimeout(rr, 200));
+    }
+    return { count: merged.length, requested: ids.length, errors };
+  } catch(_) { return { count:0, requested:ids.length, errors:ids.length }; }
+  finally { _ssSyncInFlight = false; }
+}
+
+function ssSilentSyncThrottled(){
+  if (_ssSyncInFlight) return;
+  const now = Date.now();
+  if (now - _ssLastSync < 30000) return;
+  _ssLastSync = now;
+  ssSilentSync();
+}
+
+let _ssLastSync = 0;
+
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  const opened = document.querySelectorAll('.moverlay.open, .script-modal-overlay.open');
+  if (!opened.length) return;
+  opened.forEach(el => el.classList.remove('open'));
+  document.getElementById('gsearch-overlay')?.classList.remove('open');
+}, true);
+
+async function loadFromServerCache(){
+  try {
+    const r = await fetch('/api/leads?limit=5000', { cache: 'no-store' });
+    if (!r.ok) return false;
+    const j = await r.json();
+    if (!j?.success || !Array.isArray(j.orders) || !j.orders.length) return false;
+    ssOrders = j.orders;
+    leads = j.orders;
+    try { localStorage.setItem('ecospro_leads', JSON.stringify(j.orders)); } catch(_){}
+    if (typeof renderOverview === 'function' && cpage === 'overview') renderOverview();
+    if (typeof renderLeads === 'function' && cpage === 'leads') renderLeads();
+    if (typeof renderSSAll === 'function' && cpage === 'spaceseller') renderSSAll();
+    if (typeof renderCustomersPage === 'function' && cpage === 'customers') renderCustomersPage();
+    return true;
+  } catch(_) { return false; }
+}
+
+function triggerServerSync(){
+  try { fetch('/api/leads/sync', { method:'POST', cache:'no-store' }).catch(()=>{}); } catch(_){}
+}
+
+(async function bootProductsFromServer(){
+  try {
+    const serverProducts = await loadProductsFromServer();
+    if (Array.isArray(serverProducts) && serverProducts.length) {
+      products = serverProducts;
+      LS.setItem('ecopro_products', JSON.stringify(products));
+      try { if (typeof renderProducts === 'function') renderProducts(); } catch(_){}
+      try { checkLowStockNotifs(); } catch(_){}
+    } else if (Array.isArray(products) && products.length) {
+      syncProductsToServer();
+    }
+  } catch(e) { console.warn('[crm-sync] boot products error', e?.message || e); }
+})();
+
+(async function bootTasksFromServer(){
+  try {
+    const serverTasks = await loadTasksFromServer();
+    if (Array.isArray(serverTasks) && serverTasks.length) {
+      tasks = serverTasks;
+      LS.setItem('ecopro_tasks', JSON.stringify(tasks));
+      try { if (typeof renderTasks === 'function') renderTasks(); } catch(_){}
+    } else if (Array.isArray(tasks) && tasks.length) {
+      syncTasksToServer();
+    }
+  } catch(e) { console.warn('[crm-sync] boot tasks error', e?.message || e); }
+})();
+
+(async function bootAutoSync(){
+  try { if (typeof fetchSpaceSellerStatuses === 'function') await fetchSpaceSellerStatuses(); } catch(_){}
+  try { checkLowStockNotifs(); } catch(_){}
+  const fromCache = await loadFromServerCache();
+  if (fromCache) {
+    triggerServerSync();
+    try { showToast('✓ ' + leads.length + ' orders loaded from cache'); } catch(_){}
+    return;
+  }
+  const result = await ssSilentSync();
+  if (result && result.count > 0) {
+    try { showToast('✓ ' + result.count + ' orders synced from SpaceSeller'); } catch(_){}
+  }
+})();
+
+(async function bootTeamFromServer(){
+  try {
+    const serverTeam = await loadTeamFromServer();
+    if (Array.isArray(serverTeam) && serverTeam.length) {
+      LS.setItem('ecos_team_members', JSON.stringify(serverTeam));
+    } else {
+      const local = getUsers();
+      if (local.length) syncTeamToServer(local);
+    }
+  } catch(e) { console.warn('[crm-sync] boot team error', e?.message || e); }
+})();
+
+(async function bootSettingsFromServer(){
+  try {
+    const s = await loadSettingsFromServer();
+    if (s) {
+      if (s.low_stock_threshold) localStorage.setItem('ecos_lowstock_threshold', String(s.low_stock_threshold));
+      if (s.theme) try { localStorage.setItem('ecos_theme', s.theme); } catch(_){}
+      try { checkLowStockNotifs(); } catch(_){}
+    } else {
+      const localThresh = localStorage.getItem('ecos_lowstock_threshold');
+      if (localThresh) syncSettingsToServer({ low_stock_threshold: parseInt(localThresh, 10) || 40 });
+    }
+  } catch(e) { console.warn('[crm-sync] boot settings error', e?.message || e); }
+})();
+
+setInterval(() => { if (!document.hidden) ssSilentSyncThrottled(); }, 90000);
+window.addEventListener('focus', () => ssSilentSyncThrottled());
+document.addEventListener('visibilitychange', () => { if (!document.hidden) ssSilentSyncThrottled(); });
+
+(function hookGoPageForSync(){
+  if (typeof window.goPage !== 'function') return;
+  const orig = window.goPage;
+  window.goPage = function(name, el){
+    const r = orig.apply(this, arguments);
+    if (['overview','leads','spaceseller','customers'].includes(name)) {
+      ssSilentSyncThrottled();
+    }
+    if (name === 'products') {
+      try { checkLowStockNotifs(); } catch(_){}
+    }
+    if (name === 'imports') {
+      try { renderImports(); } catch(_){}
+      try { renderSheetSources(); } catch(_){}
+    }
+    return r;
+  };
+})();
+
+</script>
+</body>
+</html>
