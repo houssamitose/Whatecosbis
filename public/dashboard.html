@@ -7107,8 +7107,8 @@ function simDeleteScenario(){
 // Load products from localStorage. Skip the legacy wipe migration if ANY product has a
 // non-empty tracking_code (= synced from SpaceSeller) — otherwise we'd lose real data.
 let products = readJSON('ecopro_products', null);
-if(products && !products.some(p=>p.status==='test') && !products.some(p=>(p.tracking_code||p.trackingCode||'').trim())){
-  // Old session AND no SpaceSeller-linked products — wipe and reload fresh defaults
+// Wipe if no product has a real trackingCode (= all are demo/fake products)
+if(products && !products.some(p=>(p.tracking_code||p.trackingCode||'').trim())){
   products = null;
   LS.removeItem('ecopro_products');
 }
