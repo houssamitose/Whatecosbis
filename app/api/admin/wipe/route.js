@@ -53,16 +53,41 @@ async function wipeTable(table) {
   return { table, deleted: rows.length };
 }
 
+async function deleteOrder(orderId) {
+  const h = sb({ Prefer: "return=representation" });
+  const [r1, r2, r3] = await Promise.all([
+    fetch(`${SB}/rest/v1/ss_orders?order_id=eq.${orderId}`, { method: "DELETE", headers: h }),
+    fetch(`${SB}/rest/v1/ss_tracked_ids?order_id=eq.${orderId}`, { method: "DELETE", headers: h }),
+    fetch(`${SB}/rest/v1/crm_lead_imports?spaceseller_order_id=eq.${orderId}`, { method: "DELETE", headers: h }),
+  ]);
+  return {
+    ss_orders: r1.ok ? (await r1.json()).length : `err ${r1.status}`,
+    ss_tracked_ids: r2.ok ? (await r2.json()).length : `err ${r2.status}`,
+    crm_lead_imports: r3.ok ? (await r3.json()).length : `err ${r3.status}`,
+  };
+}
+
 export async function POST(req) {
   if (!SB || !KEY) {
     return Response.json({ success: false, error: "Env vars missing" }, { status: 500 });
   }
   const u = new URL(req.url);
+
+  /* Targeted single-order delete: ?order_id=XXX */
+  const orderId = parseInt(u.searchParams.get("order_id"), 10);
+  if (Number.isFinite(orderId)) {
+    try {
+      const result = await deleteOrder(orderId);
+      return Response.json({ success: true, deleted_order: orderId, result });
+    } catch (e) {
+      return Response.json({ success: false, error: e.message || String(e) }, { status: 500 });
+    }
+  }
+
   if (u.searchParams.get("confirm") !== "YES_REALLY_WIPE") {
     return Response.json({ success: false, error: "Add ?confirm=YES_REALLY_WIPE to actually run" }, { status: 400 });
   }
   try {
-    /* Order matters: lead_imports references nothing, ss_orders + ss_tracked_ids are independent, products independent. */
     const results = [];
     for (const t of ["crm_lead_imports", "ss_orders", "ss_tracked_ids", "crm_products"]) {
       results.push(await wipeTable(t));
@@ -72,3 +97,5 @@ export async function POST(req) {
     return Response.json({ success: false, error: e.message || String(e) }, { status: 500 });
   }
 }
+
+export const DELETE = POST;
