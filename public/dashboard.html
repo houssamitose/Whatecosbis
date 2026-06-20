@@ -177,7 +177,7 @@ tbody td{padding:10px 11px}
 
 /* ── KANBAN ── */
 .kanban{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start}
-.kcol{background:var(--s2);border-radius:13px;padding:14px;border:2px solid transparent;transition:border-color .18s,background .18s;min-height:480px}
+.kcol{background:var(--s1);border-radius:14px;padding:16px;border:1.5px solid var(--bd);transition:border-color .18s,background .18s;min-height:480px}
 .kcol.drag-over{border-color:var(--acc);background:rgba(91,80,240,.04)}
 .khead{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px}
 .khead-l{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px}
@@ -757,13 +757,17 @@ tbody td{padding:10px 11px}
 .sp-today-btn:hover{background:var(--s3);color:var(--txt)}
 
 /* Sprint tabs */
-.sp-tabs{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
-.sp-tab{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid transparent;transition:all .14s;user-select:none}
-.sp-tab.active{border-color:currentColor;background:color-mix(in srgb,currentColor 10%,transparent)}
-.sp-tab:hover{opacity:.85}
+.sp-tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.sp-tab{display:inline-flex;align-items:center;gap:7px;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid transparent;transition:all .15s;user-select:none;background:var(--s1)}
+.sp-tab.active{border-color:currentColor;background:color-mix(in srgb,currentColor 12%,transparent);box-shadow:0 2px 8px color-mix(in srgb,currentColor 20%,transparent)}
+.sp-tab:hover{background:var(--s2)}
 .sp-tab-dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex-shrink:0}
-.sp-tab-edit{opacity:0;font-size:11px;margin-left:2px;transition:opacity .12s}
-.sp-tab:hover .sp-tab-edit{opacity:1}
+.sp-tab-name{flex:1}
+.sp-tab-actions{display:inline-flex;align-items:center;gap:3px;opacity:0;transition:opacity .12s;margin-left:2px}
+.sp-tab:hover .sp-tab-actions{opacity:1}
+.sp-tab-edit,.sp-tab-del{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:5px;transition:background .1s}
+.sp-tab-edit:hover{background:color-mix(in srgb,currentColor 20%,transparent)}
+.sp-tab-del:hover{background:#ef444420;color:#ef4444}
 
 /* Calendar */
 .sp-calendar-wrap{background:var(--s1);border:1px solid var(--bd);border-radius:14px;overflow:hidden;box-shadow:var(--sh)}
@@ -1993,17 +1997,21 @@ tr.clickable:hover{background:var(--s2)!important}
     <!-- ══ TASKS ══ -->
     <!-- ══ TASKS: DAILY ══ -->
     <div class="page" id="page-tasks">
-      <div class="fb mb14" style="margin-bottom:16px">
+      <div class="fb mb14" style="margin-bottom:16px;flex-wrap:wrap;gap:10px">
         <div class="sec" style="margin:0"><i class="ti ti-checklist"></i>Daily Tasks</div>
-        <div class="flex g8">
-          <input type="date" class="fsel" id="tdate" onchange="filterTasksByDate(this.value)" style="padding:7px 10px;font-family:'Plus Jakarta Sans',sans-serif" value="2026-05-12">
-          <button class="btn btn-g" onclick="clearDateFilter()" style="padding:6px 10px;font-size:11px" title="Show all dates"><i class="ti ti-x"></i></button>
-          <select class="fsel" onchange="filterTasksBy(this.value)" id="tfilter">
+        <div class="flex g8" style="flex-wrap:wrap">
+          <div class="flex g4" style="background:var(--s1);border:1px solid var(--bd);border-radius:9px;padding:4px 8px;align-items:center;gap:6px">
+            <i class="ti ti-calendar" style="font-size:13px;color:var(--m2)"></i>
+            <input type="date" id="tdate" onchange="filterTasksByDate(this.value)" style="background:transparent;border:none;outline:none;font-size:12px;font-weight:600;font-family:'Plus Jakarta Sans',sans-serif;color:var(--txt);cursor:pointer">
+            <button onclick="clearDateFilter()" title="Effacer filtre date" style="background:none;border:none;cursor:pointer;color:var(--m2);display:flex;align-items:center;padding:0;line-height:1" onmouseover="this.style.color='var(--txt)'" onmouseout="this.style.color='var(--m2)'"><i class="ti ti-x" style="font-size:11px"></i></button>
+          </div>
+          <select class="fsel" onchange="filterTasksBy(this.value)" id="tfilter" style="min-width:130px">
             <option value="all">All Members</option>
             <option value="Houssam">Houssam</option>
             <option value="Nissrine">Nissrine</option>
             <option value="Abdessamad">Abdessamad</option>
           </select>
+          <button class="btn btn-p" onclick="openTaskModal('todo')"><i class="ti ti-plus"></i>New Task</button>
         </div>
       </div>
       <div class="kanban">
@@ -3443,16 +3451,16 @@ tr.clickable:hover{background:var(--s2)!important}
             <span class="sp-range-label" id="sp-range-label">–</span>
             <button class="tbn sp-nav-btn" onclick="spNavWeek(1)"><i class="ti ti-chevron-right"></i></button>
           </div>
-          <button class="tbn sp-today-btn" onclick="spGoToday()">Today</button>
+          <button class="tbn sp-today-btn" onclick="spGoToday()"><i class="ti ti-calendar-event" style="font-size:12px"></i>Today</button>
         </div>
         <div class="flex g8">
-          <select class="fsel" id="sp-member-filter" onchange="renderSprints()">
+          <select class="fsel" id="sp-member-filter" onchange="renderSprints()" style="min-width:130px">
             <option value="all">All Members</option>
             <option value="Houssam">Houssam</option>
             <option value="Nissrine">Nissrine</option>
             <option value="Abdessamad">Abdessamad</option>
           </select>
-          <button class="btn btn-p" onclick="openSprintModal()"><i class="ti ti-plus"></i>New Sprint</button>
+          <button class="btn btn-p" onclick="openSprintModal()" style="white-space:nowrap"><i class="ti ti-plus"></i>New Sprint</button>
         </div>
       </div>
 
@@ -4698,18 +4706,7 @@ if(tasks){
   });
 }
 
-if (!tasks) {
-  tasks = [
-    {id:'t1',title:'Follow up Agadir leads',desc:'Contact leads from last week who haven\'t responded yet.',status:'doing',resp:'Houssam',priority:'high',audios:[],date:'2026-05-12',links:[]},
-    {id:'t2',title:'Update product listings',desc:'Add new seasonal products and update descriptions.',status:'todo',resp:'Nissrine',priority:'medium',audios:[],date:'2026-05-12',links:[]},
-    {id:'t3',title:'Confirm Casablanca orders',desc:'Check and confirm all pending COD orders in Casablanca.',status:'done',resp:'Abdessamad',priority:'high',audios:[],date:'2026-05-10',links:[]},
-    {id:'t4',title:'Prepare weekly report',desc:'Aggregate sales, delivery, and lead conversion data.',status:'todo',resp:'Houssam',priority:'medium',audios:[],date:'2026-05-10',links:[]},
-    {id:'t5',title:'Handle return requests',desc:'Review and process all return requests from this week.',status:'doing',resp:'Nissrine',priority:'high',audios:[],date:'2026-05-11',links:[]},
-    {id:'t6',title:'Social media campaign',desc:'Post new product photos and promotions on Instagram.',status:'done',resp:'Abdessamad',priority:'low',audios:[],date:'2026-05-11',links:[]},
-    {id:'t7',title:'Logistics partner meeting',desc:'Weekly sync with delivery partners on COD performance.',status:'todo',resp:'Houssam',priority:'high',audios:[],date:'2026-05-12',links:[]},
-  ];
-  saveTasks();
-}
+if (!tasks) { tasks = []; }
 
 function saveTasks(){
   LS.setItem('ecopro_tasks', JSON.stringify(tasks));
@@ -7107,8 +7104,8 @@ function simDeleteScenario(){
 // Load products from localStorage. Skip the legacy wipe migration if ANY product has a
 // non-empty tracking_code (= synced from SpaceSeller) — otherwise we'd lose real data.
 let products = readJSON('ecopro_products', null);
-// Wipe if no product has a real trackingCode (= all are demo/fake products)
-if(products && !products.some(p=>(p.tracking_code||p.trackingCode||'').trim())){
+if(products && !products.some(p=>p.status==='test') && !products.some(p=>(p.tracking_code||p.trackingCode||'').trim())){
+  // Old session AND no SpaceSeller-linked products — wipe and reload fresh defaults
   products = null;
   LS.removeItem('ecopro_products');
 }
@@ -8546,15 +8543,7 @@ function renderSSOrders(){
    SPRINTS
 ═══════════════════════════════════════ */
 let sprints = readJSON('ecopro_sprints', null);
-if(!sprints){
-  const now = new Date();
-  const y = now.getFullYear(), m = now.getMonth();
-  sprints = [
-    { id:'sp1', name:'Sprint 1 — Launch Prep', start:`${y}-${String(m).padStart(2,'0')}-26`, end:`${y}-${String(m+1).padStart(2,'0')}-08`, color:'#5b50f0', tasks:[] },
-    { id:'sp2', name:'Sprint 2 — Ads & Creative', start:`${y}-${String(m+1).padStart(2,'0')}-09`, end:`${y}-${String(m+1).padStart(2,'0')}-22`, color:'#1e7dc8', tasks:[] },
-  ];
-  saveSprints();
-}
+if(!sprints){ sprints = []; }
 function saveSprints(){ LS.setItem('ecopro_sprints', JSON.stringify(sprints)); }
 
 let spViewStart = (() => {
@@ -8591,13 +8580,25 @@ function renderSprints(){
 
   // Sprint tabs
   const tabsEl = document.getElementById('sp-tabs');
-  if(tabsEl) tabsEl.innerHTML = sprints.map(sp=>`
-    <div class="sp-tab${sp.id===spSelectedSprintId?' active':''}" style="color:${sp.color}"
-      onclick="spSelectSprint('${sp.id}')">
-      <span class="sp-tab-dot"></span>
-      ${xss(sp.name)}
-      <span class="sp-tab-edit" onclick="event.stopPropagation();openSprintModal('${sp.id}')"><i class="ti ti-pencil" style="font-size:10px"></i></span>
-    </div>`).join('');
+  if(tabsEl){
+    if(!sprints.length){
+      tabsEl.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--s1);border:1px dashed var(--bd2);border-radius:10px;color:var(--m2);font-size:12px;font-weight:600">
+        <i class="ti ti-calendar-off" style="font-size:16px;opacity:.5"></i>
+        Aucun sprint créé — clique sur <strong style="color:var(--acc);margin:0 4px">+ New Sprint</strong> pour commencer
+      </div>`;
+    } else {
+      tabsEl.innerHTML = sprints.map(sp=>`
+        <div class="sp-tab${sp.id===spSelectedSprintId?' active':''}" style="color:${sp.color}"
+          onclick="spSelectSprint('${sp.id}')">
+          <span class="sp-tab-dot"></span>
+          <span class="sp-tab-name">${xss(sp.name)}</span>
+          <span class="sp-tab-actions">
+            <span class="sp-tab-edit" onclick="event.stopPropagation();openSprintModal('${sp.id}')" title="Modifier"><i class="ti ti-pencil" style="font-size:10px"></i></span>
+            <span class="sp-tab-del" onclick="event.stopPropagation();deleteSprint('${sp.id}')" title="Supprimer"><i class="ti ti-trash" style="font-size:10px"></i></span>
+          </span>
+        </div>`).join('');
+    }
+  }
 
   // Build day array
   const days = [];
@@ -8769,6 +8770,13 @@ function saveSprint(){
     spSelectedSprintId=ns.id;
   }
   saveSprints(); closeSprintModal(); renderSprints(); showToast('Sprint saved ✓');
+}
+
+function deleteSprint(id){
+  if(!confirm('Supprimer ce sprint et toutes ses tâches ?')) return;
+  sprints = sprints.filter(s=>s.id!==id);
+  if(spSelectedSprintId===id) spSelectedSprintId = sprints.length ? sprints[0].id : null;
+  saveSprints(); renderSprints(); showToast('Sprint supprimé ✓');
 }
 
 /* ── Sprint Task Modal ── */
