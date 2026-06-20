@@ -96,6 +96,9 @@ html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;font-family:
 .btn-p:hover{filter:brightness(1.08);transform:translateY(-1px);box-shadow:0 4px 14px rgba(91,80,240,.35)}
 .btn-g{background:var(--s1);color:var(--txt);border:1px solid var(--bd2)}
 .btn-g:hover{background:var(--s3)}
+.btn-tab{background:var(--s2);color:var(--m1);border:1px solid var(--bd)}
+.btn-tab:hover{background:var(--s3);color:var(--txt)}
+.btn-tab.on{background:var(--acc);color:#fff;border-color:var(--acc)}
 .theme-btn{width:32px;height:32px;border-radius:8px;background:var(--s2);border:1px solid var(--bd2);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--m1);transition:all .15s}
 .theme-btn:hover{background:var(--s3);color:var(--txt)}
 .theme-btn i{font-size:16px}
@@ -2212,10 +2215,10 @@ tr.clickable:hover{background:var(--s2)!important}
       <!-- Toolbar: filters + Add Product button -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px">
         <div style="display:flex;gap:6px" id="prod-tabs">
-          <button class="btn" data-prod-view="active" onclick="setProductView('active')" style="background:var(--s2);border:1px solid var(--bd);padding:6px 12px;font-size:12px"><i class="ti ti-box"></i> Active</button>
-          <button class="btn" data-prod-view="test" onclick="setProductView('test')" style="background:var(--s2);border:1px solid var(--bd);padding:6px 12px;font-size:12px"><i class="ti ti-flask"></i> To Test</button>
-          <button class="btn" data-prod-view="inactive" onclick="setProductView('inactive')" style="background:var(--s2);border:1px solid var(--bd);padding:6px 12px;font-size:12px"><i class="ti ti-pause"></i> Inactive</button>
-          <button class="btn" data-prod-view="off" onclick="setProductView('off')" style="background:var(--s2);border:1px solid var(--bd);padding:6px 12px;font-size:12px"><i class="ti ti-circle-off"></i> Off</button>
+          <button class="btn btn-tab on" data-prod-view="active" onclick="setProductView('active')"><i class="ti ti-box"></i>Active</button>
+          <button class="btn btn-tab" data-prod-view="test" onclick="setProductView('test')"><i class="ti ti-flask"></i>To Test</button>
+          <button class="btn btn-tab" data-prod-view="inactive" onclick="setProductView('inactive')"><i class="ti ti-pause"></i>Inactive</button>
+          <button class="btn btn-tab" data-prod-view="off" onclick="setProductView('off')"><i class="ti ti-circle-off"></i>Off</button>
         </div>
         <button class="btn btn-p" onclick="openAddProductModal()"><i class="ti ti-plus"></i>Add Product</button>
       </div>
@@ -3216,7 +3219,7 @@ tr.clickable:hover{background:var(--s2)!important}
         </div>
         <div id="sheet-sources-body" style="display:none;margin-top:10px">
           <div id="sheet-sources-list"></div>
-          <button class="btn btn-p" onclick="addSheetSource()" style="margin-top:8px;padding:5px 14px;font-size:12px"><i class="ti ti-plus"></i> Ajouter une source</button>
+          <button class="btn btn-p" onclick="addSheetSource()" style="margin-top:8px"><i class="ti ti-plus"></i>Ajouter une source</button>
         </div>
       </div>
 
@@ -6038,15 +6041,7 @@ function setProductView(view){
   if (typeof productMenuView !== 'undefined') productMenuView = view;
   /* Toggle the .active style on the matching tab button */
   document.querySelectorAll('[data-prod-view]').forEach(btn => {
-    if (btn.getAttribute('data-prod-view') === view) {
-      btn.style.background = 'var(--acc)';
-      btn.style.color = '#fff';
-      btn.style.borderColor = 'var(--acc)';
-    } else {
-      btn.style.background = 'var(--s2)';
-      btn.style.color = '';
-      btn.style.borderColor = 'var(--bd)';
-    }
+    btn.classList.toggle('on', btn.getAttribute('data-prod-view') === view);
   });
   try { if (typeof renderProducts === 'function') renderProducts(); } catch(_){}
 }
@@ -8746,6 +8741,12 @@ function openSprintModal(editId){
   });
   document.getElementById('modal-sprint').classList.add('open');
   setTimeout(()=>document.getElementById('sp-name').focus(),60);
+}
+function closeLeadModal(){ document.getElementById('modal-lead').classList.remove('open'); }
+function saveLead(){
+  const id = document.getElementById('lm-id').value;
+  showToast(id ? 'Lead mis à jour ✓' : 'Lead créé ✓');
+  closeLeadModal();
 }
 function closeSprintModal(){ document.getElementById('modal-sprint').classList.remove('open'); }
 function spPickColor(c,el){
@@ -13798,4 +13799,4 @@ function renderTeamResults(){
         ${items.slice(0,8).map(cr=>`
           <div class="tr-creative-item ${cr.status}">
             <i class="ti ti-${cr.status==='winning'?'trophy':cr.status==='failed'?'x':'flask'}"></i>
-         
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
