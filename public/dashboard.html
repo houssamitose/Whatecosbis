@@ -660,7 +660,7 @@ tbody td{padding:10px 12px}
 /* ══════════════════════════════════════
    SPACESELLER PAGE
 ══════════════════════════════════════ */
-.ss-topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+.ss-topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
 .ss-title-block{display:flex;align-items:center;gap:12px}
 .ss-topbar-r{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .ss-token-wrap{display:flex;align-items:center;gap:0;background:var(--s2);border:1px solid var(--bd2);border-radius:8px;overflow:hidden}
@@ -1075,7 +1075,7 @@ tbody td{padding:10px 12px}
 .ballot-st-tag.planned{background:var(--blue2);color:var(--blue)}
 .ballot-st-tag.pending{background:var(--amber2);color:var(--amber)}
 .ballot-st-tag.idea{background:var(--s3);color:var(--m1)}
-.ballot-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.ballot-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px}
 .ballot-toolbar .left{display:flex;align-items:center;gap:8px}
 .ballot-add-btn{padding:8px 14px;background:var(--acc);color:#fff;border:none;border-radius:9px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
 .ballot-add-btn:hover{background:var(--acc2)}
@@ -1513,7 +1513,7 @@ tr.clickable:hover{background:var(--s2)!important}
 .notif-empty i{font-size:28px;display:block;margin-bottom:8px;opacity:.4}
 
 /* ══════════ CUSTOMER PROFILES ══════════ */
-.cust-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.cust-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
 .cust-search{padding:8px 12px;background:var(--s1);border:1px solid var(--bd);border-radius:9px;color:var(--txt);font-family:inherit;font-size:12.5px;outline:none;min-width:240px}
 .cust-search:focus{border-color:var(--acc)}
 .cust-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
@@ -1546,7 +1546,7 @@ tr.clickable:hover{background:var(--s2)!important}
 .sb-foot{margin-top:auto}
 
 /* ══════════ ORDER KANBAN VIEW ══════════ */
-.lk-toolbar{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.lk-toolbar{display:flex;gap:8px;align-items:center;margin-bottom:14px}
 .lk-view-toggle{display:inline-flex;background:var(--s2);border:1px solid var(--bd);border-radius:9px;padding:3px;gap:2px}
 .lk-view-toggle button{background:transparent;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:11.5px;font-weight:700;color:var(--m1);display:inline-flex;align-items:center;gap:6px}
 .lk-view-toggle button.active{background:var(--acc);color:#fff}
@@ -1653,7 +1653,7 @@ tr.clickable:hover{background:var(--s2)!important}
 .ov-date-range .ov-period-label{font-size:11px;color:var(--m1);font-weight:600;margin-left:auto}
 
 /* ══════════ TEAM RESULTS PAGE ══════════ */
-.tr-toolbar{display:flex;align-items:center;gap:11px;margin-bottom:14px;flex-wrap:wrap}
+.tr-toolbar{display:flex;align-items:center;justify-content:space-between;gap:11px;margin-bottom:14px}
 .tr-month-picker{display:flex;align-items:center;gap:6px;background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:7px 11px}
 .tr-month-picker button{background:none;border:none;color:var(--m1);cursor:pointer;font-size:14px;padding:3px 7px;border-radius:5px}
 .tr-month-picker button:hover{color:var(--acc);background:var(--s2)}
@@ -1998,9 +1998,9 @@ tr.clickable:hover{background:var(--s2)!important}
     <!-- ══ TASKS ══ -->
     <!-- ══ TASKS: DAILY ══ -->
     <div class="page" id="page-tasks">
-      <div class="fb mb14" style="margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <div class="fb mb14" style="margin-bottom:16px;gap:10px">
         <div class="sec" style="margin:0"><i class="ti ti-checklist"></i>Daily Tasks</div>
-        <div class="flex g8" style="flex-wrap:wrap">
+        <div class="flex g8">
           <div class="flex g4" style="background:var(--s1);border:1px solid var(--bd);border-radius:9px;padding:4px 8px;align-items:center;gap:6px">
             <i class="ti ti-calendar" style="font-size:13px;color:var(--m2)"></i>
             <input type="date" id="tdate" onchange="filterTasksByDate(this.value)" style="background:transparent;border:none;outline:none;font-size:12px;font-weight:600;font-family:'Plus Jakarta Sans',sans-serif;color:var(--txt);cursor:pointer">
@@ -2100,7 +2100,7 @@ tr.clickable:hover{background:var(--s2)!important}
           </select>
           <input type="text" class="fsel" id="ld-search" oninput="renderLeads()" placeholder="Search name / phone…" style="min-width:160px">
           <button class="btn btn-p" onclick="openNewOrderModal()"><i class="ti ti-plus"></i>New order</button>
-          <button class="btn" style="border:1px solid var(--bd);background:var(--s2)" onclick="exportFilteredLeads()" title="Export leads filtrés en CSV"><i class="ti ti-download"></i>Export CSV</button>
+          <button class="btn btn-g" onclick="exportFilteredLeads()" title="Export leads filtrés en CSV"><i class="ti ti-download"></i>Export CSV</button>
         </div>
       </div>
       <div class="lk-board" id="lk-board" style="display:none"></div>
@@ -2140,15 +2140,15 @@ tr.clickable:hover{background:var(--s2)!important}
     <!-- ══ SIMULATOR ══ -->
     <div class="page" id="page-simulator">
       <div class="sim-page-wrap">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
         <div class="sec" style="font-size:14px;margin:0"><i class="ti ti-calculator"></i>COD Simulator</div>
-        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <div style="display:flex;gap:6px;align-items:center">
           <select id="sim-scenario-sel" class="fsel" style="font-size:12px;padding:4px 8px;height:30px" onchange="simLoadScenario()">
             <option value="">Charger un scénario…</option>
           </select>
           <input type="text" id="sim-scenario-name" class="fsel" placeholder="Nom du scénario" style="font-size:12px;padding:4px 8px;height:30px;width:160px">
-          <button class="btn btn-p" onclick="simSaveScenario()" style="padding:5px 12px;font-size:12px"><i class="ti ti-device-floppy"></i>Sauvegarder</button>
-          <button class="btn" onclick="simDeleteScenario()" style="padding:5px 10px;font-size:12px;border:1px solid var(--bd);background:var(--s2)" title="Supprimer le scénario sélectionné"><i class="ti ti-trash" style="color:var(--bad)"></i></button>
+          <button class="btn btn-p" onclick="simSaveScenario()"><i class="ti ti-device-floppy"></i>Sauvegarder</button>
+          <button class="btn btn-g" onclick="simDeleteScenario()" title="Supprimer le scénario sélectionné"><i class="ti ti-trash" style="color:var(--bad)"></i></button>
         </div>
       </div>
       <div style="font-size:12px;color:var(--m1);margin-bottom:6px">Plug in your numbers — projections update live.</div>
@@ -2210,14 +2210,14 @@ tr.clickable:hover{background:var(--s2)!important}
     <!-- ══ PRODUCTS ══ -->
     <div class="page" id="page-products">
       <!-- Toolbar: filters + Add Product button -->
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-        <div style="display:flex;gap:6px;flex-wrap:wrap" id="prod-tabs">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px">
+        <div style="display:flex;gap:6px" id="prod-tabs">
           <button class="btn" data-prod-view="active" onclick="setProductView('active')" style="background:var(--s2);border:1px solid var(--bd);padding:6px 12px;font-size:12px"><i class="ti ti-box"></i> Active</button>
           <button class="btn" data-prod-view="test" onclick="setProductView('test')" style="background:var(--s2);border:1px solid var(--bd);padding:6px 12px;font-size:12px"><i class="ti ti-flask"></i> To Test</button>
           <button class="btn" data-prod-view="inactive" onclick="setProductView('inactive')" style="background:var(--s2);border:1px solid var(--bd);padding:6px 12px;font-size:12px"><i class="ti ti-pause"></i> Inactive</button>
           <button class="btn" data-prod-view="off" onclick="setProductView('off')" style="background:var(--s2);border:1px solid var(--bd);padding:6px 12px;font-size:12px"><i class="ti ti-circle-off"></i> Off</button>
         </div>
-        <button class="btn btn-p" onclick="openAddProductModal()" style="padding:7px 14px;font-size:12.5px"><i class="ti ti-plus"></i> Add Product</button>
+        <button class="btn btn-p" onclick="openAddProductModal()"><i class="ti ti-plus"></i>Add Product</button>
       </div>
       <!-- Product rail -->
       <div class="prod-rail" id="prod-rail"></div>
@@ -2238,8 +2238,8 @@ tr.clickable:hover{background:var(--s2)!important}
         <div class="ss-topbar-r">
           <!-- Hidden input keeps every legacy reader (#ss-token .value) working. The real token is managed in Settings → API Keys. -->
           <input type="hidden" id="ss-token" value="">
-          <button class="btn admin-only-el" style="border:1px solid var(--bd);background:var(--s2)" onclick="_goSettings('api')" title="Manage the SpaceSeller token in Settings → API Keys"><i class="ti ti-key"></i>Token in Settings</button>
-          <button class="btn" style="border:1px solid var(--bd);background:var(--s2)" onclick="importOrderIds()" title="Paste order IDs from your SpaceSeller dashboard"><i class="ti ti-cloud-upload"></i>Import IDs</button>
+          <button class="btn btn-g admin-only-el" onclick="_goSettings('api')" title="Manage the SpaceSeller token in Settings → API Keys"><i class="ti ti-key"></i>Token in Settings</button>
+          <button class="btn btn-g" onclick="importOrderIds()" title="Paste order IDs from your SpaceSeller dashboard"><i class="ti ti-cloud-upload"></i>Import IDs</button>
           <button class="btn btn-p" id="ss-fetch-btn" onclick="fetchSpaceSeller()">
             <i class="ti ti-refresh"></i>Sync Tracked Orders
           </button>
@@ -2441,7 +2441,7 @@ tr.clickable:hover{background:var(--s2)!important}
           <h2 style="font-size:18px;font-weight:800;letter-spacing:-.3px">Campaigns</h2>
           <p style="font-size:12px;color:var(--m1);margin-top:3px" id="manageSubtitle">All campaigns across connected ad accounts</p>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div style="display:flex;gap:8px;align-items:center">
           <div class="live-pill"><div class="ldot"></div><span id="campUpd">Not connected</span></div>
           <div class="drop-wrap" id="accDropWrap">
             <button class="drop-btn" id="accDropBtn" onclick="toggleDrop('accDrop')">
@@ -2805,7 +2805,7 @@ tr.clickable:hover{background:var(--s2)!important}
           <div class="settings-section-sub">Configure when the bell icon pings you.</div>
           <div class="srow" style="margin-top:8px">
             <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Alerte stock faible (≤ N pi&egrave;ces)</label>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <div style="display:flex;gap:8px;align-items:center">
               <input type="number" min="0" step="1" id="lowstock-threshold" class="finput" style="max-width:120px" value="40">
               <button class="sbtn sbtn-p" onclick="(function(){const v=parseInt(document.getElementById('lowstock-threshold').value||'40',10);setLowStockThreshold(v);showToast('Seuil sauvegard&eacute; : '+v+' pi&egrave;ces');})()"><i class="ti ti-check"></i>Sauvegarder</button>
               <span style="font-size:11px;color:var(--m2)">D&eacute;faut : 40. Toute commande active sous ce seuil d&eacute;clenchera une notification cloche.</span>
@@ -3218,11 +3218,11 @@ tr.clickable:hover{background:var(--s2)!important}
 
     <!-- ══ LEAD IMPORTS (Google Sheets → SpaceSeller) ══ -->
     <div class="page" id="page-imports">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px">
         <div class="sec" style="margin:0"><i class="ti ti-file-import"></i>Lead Imports <span style="font-size:11px;color:var(--m1);font-weight:500;margin-left:6px">— Google Sheets → SpaceSeller pipeline</span></div>
         <div style="display:flex;gap:6px">
-          <button class="btn" onclick="renderImports()" style="background:var(--s2);border:1px solid var(--bd);padding:6px 12px;font-size:12px"><i class="ti ti-refresh"></i> Refresh</button>
-          <button class="btn btn-p" onclick="triggerSheetsPoll()" style="padding:7px 14px;font-size:12.5px"><i class="ti ti-cloud-download"></i> Sync now</button>
+          <button class="btn btn-g" onclick="renderImports()"><i class="ti ti-refresh"></i>Refresh</button>
+          <button class="btn btn-p" onclick="triggerSheetsPoll()"><i class="ti ti-cloud-download"></i>Sync now</button>
         </div>
       </div>
       <div id="imports-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px"></div>
@@ -3255,7 +3255,7 @@ tr.clickable:hover{background:var(--s2)!important}
     <div class="page" id="page-customers">
       <div class="cust-toolbar">
         <div class="sec" style="margin:0"><i class="ti ti-address-book"></i>Customers <span style="font-size:11px;color:var(--m1);font-weight:500;margin-left:6px">— grouped from SpaceSeller orders</span></div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div style="display:flex;gap:8px;align-items:center">
           <input type="text" class="cust-search" id="cust-search" placeholder="Search by name or phone…" oninput="renderCustomersPage()">
           <select class="cust-search" id="cust-filter-tier" onchange="renderCustomersPage()" style="min-width:160px">
             <option value="all">All tiers</option>
@@ -3264,7 +3264,7 @@ tr.clickable:hover{background:var(--s2)!important}
             <option value="new">New (1 order)</option>
             <option value="lost">Lost (no order 60+ days)</option>
           </select>
-          <button class="btn" style="border:1px solid var(--bd);background:var(--s2);padding:6px 12px;font-size:12px" onclick="exportCustomersCsv()" title="Exporter la liste filtrée en CSV"><i class="ti ti-download"></i>Export CSV</button>
+          <button class="btn btn-g" onclick="exportCustomersCsv()" title="Exporter la liste filtrée en CSV"><i class="ti ti-download"></i>Export CSV</button>
         </div>
       </div>
       <div class="kpi-g mb14">
@@ -13817,253 +13817,4 @@ function renderTeamResults(){
         ${items.slice(0,8).map(cr=>`
           <div class="tr-creative-item ${cr.status}">
             <i class="ti ti-${cr.status==='winning'?'trophy':cr.status==='failed'?'x':'flask'}"></i>
-            <span class="tr-creative-name">${xss(cr.productName)}</span>
-            <span class="tr-creative-roas">${cr.roas.toFixed(2)}x</span>
-          </div>`).join('')}
-        ${items.length>8?`<div style="font-size:10.5px;color:var(--m2);padding:4px 0">+${items.length-8} more…</div>`:''}
-      </div>
-    </div>`;
-  }).join('');
-}
-
-
-
-
-/* ═══════════════════════════════════════
-   TOP CREATIVES (today) — pulled from Meta Ads insights
-═══════════════════════════════════════ */
-function renderTopCreatives(){
-  const tbody = document.getElementById('ov-creatives-tbody'); if(!tbody) return;
-  const camps = (typeof af_campaigns !== 'undefined' && Array.isArray(af_campaigns)) ? af_campaigns : [];
-  if(!camps.length){
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--m2)">No campaigns synced yet — go to Campaigns page and connect an ad account.</td></tr>`;
-    return;
-  }
-  /* Compute metrics + sort by spend desc */
-  const rows = camps.map(c=>{
-    const spend = parseFloat(c.spend||0);
-    const impressions = parseInt(c.impressions||0);
-    const clicks = parseInt(c.clicks||0);
-    const purchases = parseInt(c.purch||0);
-    const ctr = parseFloat(c.ctr||0);
-    const cpm = parseFloat(c.cpm||0);
-    /* Hook rate = 3-sec views / impressions. Approximation: if no video data, use CTR/2 as a proxy */
-    const hookRate = c.video_3sec ? Math.round((c.video_3sec/impressions)*100*10)/10 : 0;
-    const cpa = purchases > 0 ? +(spend/purchases).toFixed(2) : 0;
-    return { ...c, spend, impressions, clicks, purchases, ctr, cpm, hookRate, cpa };
-  }).sort((a,b)=>b.spend-a.spend).slice(0,15);
-
-  const fmt = n => Math.round(n||0).toLocaleString();
-  const cls = (val, good, bad) => val >= good ? 'green' : val <= bad ? 'red' : '';
-  tbody.innerHTML = rows.map(r=>`
-    <tr>
-      <td>
-        <div class="ov-prod-cell">
-          <div class="ov-prod-img"><i class="ti ti-${r.status==='ACTIVE'?'player-play':'player-pause'}" style="font-size:13px;color:var(--${r.status==='ACTIVE'?'green':'m2'})"></i></div>
-          <div class="ov-prod-meta">
-            <div class="ov-prod-name">${xss(r.name||'(unnamed)')}</div>
-            <div class="ov-prod-sku">${xss(r.objective||'')} · ${xss(r.status||'')}</div>
-          </div>
-        </td>
-        <td><span class="ov-num muted">${xss(r.accName||'')}</span></td>
-        <td style="text-align:right" class="ov-num">${fmt(r.spend)}</td>
-        <td style="text-align:right" class="ov-num">${fmt(r.impressions)}</td>
-        <td style="text-align:right"><span class="ov-rate-tag ${r.hookRate>=25?'good':r.hookRate>=15?'mid':'bad'}">${r.hookRate?r.hookRate+'%':'—'}</span></td>
-        <td style="text-align:right"><span class="ov-rate-tag ${r.ctr>=2?'good':r.ctr>=1?'mid':'bad'}">${r.ctr.toFixed(2)}%</span></td>
-        <td style="text-align:right" class="ov-num ${cls(r.cpm, 0, 50)}">${r.cpm.toFixed(2)}</td>
-        <td style="text-align:right" class="ov-num ${cls(50-r.cpa, 0, 0)}">${r.cpa ? r.cpa.toFixed(2) : '—'}</td>
-        <td style="text-align:right" class="ov-num">${fmt(r.purchases)}</td>
-      </tr>`).join('');
-}
-
-/* ══ INIT ══ */
-seedAuth();
-applyAuthUI();
-
-/* Restore cached leads/orders from localStorage so KPIs work before Sync is clicked */
-try {
-  const cached = localStorage.getItem('ecospro_leads');
-  if (cached) {
-    const arr = JSON.parse(cached);
-    if (Array.isArray(arr) && arr.length) {
-      leads = arr;
-      ssOrders = arr;
-    }
-  }
-  const cachedStat = localStorage.getItem('ecos_ss_statuses');
-  if (cachedStat) {
-    try { SS_STATUSES = JSON.parse(cachedStat) || SS_STATUSES; } catch(_){}
-  }
-} catch(_){}
-
-/* Helper: poll all tracked order IDs in client-side chunks.
-   Why chunks: a single big request to /api/spaceseller/orders?ids=... would
-   exceed Vercel's 10s function timeout once we cross ~50 ids. We slice into
-   chunks of 25 and gap them with 200 ms to also avoid SpaceSeller's HTTP 429
-   rate-limit. Result: predictable, never overwrites cache with partial data. */
-
-let _ssSyncInFlight = false;
-async function ssSilentSync(){
-  if (_ssSyncInFlight) return null;
-  _ssSyncInFlight = true;
-  try {
-    const ids = (typeof ssTrackedIds === 'function') ? ssTrackedIds() : [];
-    if (!ids.length) return null;
-    const token = getSpaceSellerToken();
-    const chunkSize = 25;
-    const merged = [];
-    const errors = [];
-    for (let i = 0; i < ids.length; i += chunkSize) {
-      const chunk = ids.slice(i, i + chunkSize);
-      let r;
-      try {
-        const headers = { 'Accept': 'application/json' };
-        if (token) headers['Authorization'] = 'Bearer ' + token;
-        r = await fetch('/api/spaceseller/orders?ids=' + encodeURIComponent(chunk.join(',')), { headers, cache:'no-store' });
-      } catch(e) { errors.push({chunkStart:i, error:e.message}); continue; }
-      if (!r.ok) { errors.push({chunkStart:i, status:r.status}); continue; }
-      const json = await r.json().catch(()=>null);
-      if (json?.orders?.length) merged.push(...json.orders);
-      if (json?.errors?.length) errors.push(...json.errors);
-      if (merged.length) {
-        try {
-          const prior = JSON.parse(localStorage.getItem('ecospro_leads')||'[]');
-          const byId = new Map();
-          prior.forEach(o => { const k = o.order_id || o.id; if (k) byId.set(String(k), o); });
-          merged.forEach(o => { const k = o.order_id || o.id; if (k) byId.set(String(k), o); });
-          const combined = [...byId.values()];
-          ssOrders = combined; leads = combined;
-          localStorage.setItem('ecospro_leads', JSON.stringify(combined));
-          if (typeof renderOverview === 'function' && cpage === 'overview') renderOverview();
-          if (typeof renderLeads === 'function' && cpage === 'leads') renderLeads();
-          if (typeof renderSSAll === 'function' && cpage === 'overview') renderSSAll();
-          if (typeof renderCustomersPage === 'function' && cpage === 'customers') renderCustomersPage();
-        } catch(_){}
-      }
-      await new Promise(rr => setTimeout(rr, 200));
-    }
-    return { count: merged.length, requested: ids.length, errors };
-  } catch(_) { return { count:0, requested:ids.length, errors:ids.length }; }
-  finally { _ssSyncInFlight = false; }
-}
-
-function ssSilentSyncThrottled(){
-  if (_ssSyncInFlight) return;
-  const now = Date.now();
-  if (now - _ssLastSync < 30000) return;
-  _ssLastSync = now;
-  ssSilentSync();
-}
-
-let _ssLastSync = 0;
-
-document.addEventListener('keydown', (e) => {
-  if (e.key !== 'Escape') return;
-  const opened = document.querySelectorAll('.moverlay.open, .script-modal-overlay.open');
-  if (!opened.length) return;
-  opened.forEach(el => el.classList.remove('open'));
-  document.getElementById('gsearch-overlay')?.classList.remove('open');
-}, true);
-
-async function loadFromServerCache(){
-  try {
-    const r = await fetch('/api/leads?limit=5000', { cache: 'no-store' });
-    if (!r.ok) return false;
-    const j = await r.json();
-    if (!j?.success || !Array.isArray(j.orders) || !j.orders.length) return false;
-    ssOrders = j.orders;
-    leads = j.orders;
-    try { localStorage.setItem('ecospro_leads', JSON.stringify(j.orders)); } catch(_){}
-    if (typeof renderOverview === 'function' && cpage === 'overview') renderOverview();
-    if (typeof renderLeads === 'function' && cpage === 'leads') renderLeads();
-    if (typeof renderSSAll === 'function' && cpage === 'overview') renderSSAll();
-    if (typeof renderCustomersPage === 'function' && cpage === 'customers') renderCustomersPage();
-    return true;
-  } catch(_) { return false; }
-}
-
-function triggerServerSync(){
-  try { fetch('/api/leads/sync', { method:'POST', cache:'no-store' }).catch(()=>{}); } catch(_){}
-}
-
-(async function bootProductsFromServer(){
-  try {
-    const serverProducts = await loadProductsFromServer();
-    if (Array.isArray(serverProducts) && serverProducts.length) {
-      products = serverProducts;
-      LS.setItem('ecopro_products', JSON.stringify(products));
-      try { if (typeof renderProducts === 'function') renderProducts(); } catch(_){}
-      try { checkLowStockNotifs(); } catch(_){}
-    } else if (Array.isArray(products) && products.length) {
-      syncProductsToServer();
-    }
-  } catch(e) { console.warn('[crm-sync] boot products error', e?.message || e); }
-})();
-
-(async function bootTasksFromServer(){
-  try {
-    const serverTasks = await loadTasksFromServer();
-    if (Array.isArray(serverTasks) && serverTasks.length) {
-      tasks = serverTasks;
-      LS.setItem('ecopro_tasks', JSON.stringify(tasks));
-      try { if (typeof renderTasks === 'function') renderTasks(); } catch(_){}
-    } else if (Array.isArray(tasks) && tasks.length) {
-      syncTasksToServer();
-    }
-  } catch(e) { console.warn('[crm-sync] boot tasks error', e?.message || e); }
-})();
-
-(async function bootAutoSync(){
-  try { checkLowStockNotifs(); } catch(_){}
-  const fromCache = await loadFromServerCache();
-  if (fromCache) {
-    triggerServerSync();
-    try { showToast('✓ ' + leads.length + ' orders loaded from cache'); } catch(_){}
-  }
-})();
-
-(async function bootTeamFromServer(){
-  try {
-    const serverTeam = await loadTeamFromServer();
-    if (Array.isArray(serverTeam) && serverTeam.length) {
-      LS.setItem('ecos_team_members', JSON.stringify(serverTeam));
-    } else {
-      const local = getUsers();
-      if (local.length) syncTeamToServer(local);
-    }
-  } catch(e) { console.warn('[crm-sync] boot team error', e?.message || e); }
-})();
-
-(async function bootSettingsFromServer(){
-  try {
-    const s = await loadSettingsFromServer();
-    if (s) {
-      if (s.low_stock_threshold) localStorage.setItem('ecos_lowstock_threshold', String(s.low_stock_threshold));
-      if (s.theme) try { localStorage.setItem('ecos_theme', s.theme); } catch(_){}
-      try { checkLowStockNotifs(); } catch(_){}
-    } else {
-      const localThresh = localStorage.getItem('ecos_lowstock_threshold');
-      if (localThresh) syncSettingsToServer({ low_stock_threshold: parseInt(localThresh, 10) || 40 });
-    }
-  } catch(e) { console.warn('[crm-sync] boot settings error', e?.message || e); }
-})();
-
-(function hookGoPageForSync(){
-  if (typeof window.goPage !== 'function') return;
-  const orig = window.goPage;
-  window.goPage = function(name, el){
-    const r = orig.apply(this, arguments);
-    if (name === 'products') {
-      try { checkLowStockNotifs(); } catch(_){}
-    }
-    if (name === 'imports') {
-      try { renderImports(); } catch(_){}
-      try { renderSheetSources(); } catch(_){}
-    }
-    return r;
-  };
-})();
-
-</script>
-</body>
-</html>
+         
