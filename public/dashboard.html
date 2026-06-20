@@ -303,17 +303,17 @@ tbody td{padding:10px 12px}
 .moverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
 .moverlay.open{display:flex}
 .modal{background:var(--s1);border:1px solid var(--bd);border-radius:16px;padding:26px;width:480px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.18),0 2px 8px rgba(0,0,0,.08);animation:mIn .2s cubic-bezier(.34,1.56,.64,1)}
-@keyframes mIn{from{opacity:0;transform:scale(.97) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes mIn{from{opacity:0;transform:scale(.96) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
 .modal::-webkit-scrollbar{width:3px}
 .modal::-webkit-scrollbar-thumb{background:var(--s3);border-radius:2px}
-.mhead{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px}
-.mtitle{font-size:15px;font-weight:800;letter-spacing:-.2px}
-.msub{font-size:11px;color:var(--m1);margin-top:2px;font-weight:500}
+.mhead{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px}
+.mtitle{font-size:16px;font-weight:800;letter-spacing:-.3px}
+.msub{font-size:11px;color:var(--m1);margin-top:3px;font-weight:500}
 .mclose{background:var(--s2);border:1px solid var(--bd);color:var(--m1);cursor:pointer;width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;transition:all .12s;flex-shrink:0}
 .mclose:hover{background:var(--s3);color:var(--txt)}
 .mclose i{font-size:14px}
-.flabel{display:block;font-size:10px;color:var(--m1);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
-.fgroup{margin-bottom:13px}
+.flabel{display:block;font-size:10px;color:var(--m1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.fgroup{margin-bottom:14px}
 .finput,.fselect,.ftextarea{width:100%;padding:9px 12px;border-radius:10px;background:var(--s2);border:1.5px solid var(--bd2);color:var(--txt);font-size:12px;font-weight:500;outline:none;font-family:'Plus Jakarta Sans',sans-serif;transition:border-color .12s,box-shadow .12s}
 .finput:focus,.fselect:focus,.ftextarea:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(91,80,240,.08)}
 .fselect option{background:var(--s1)}
@@ -748,7 +748,7 @@ tbody td{padding:10px 12px}
 .process-embed-wrap{border:1px solid var(--bd);border-radius:12px;overflow:hidden;box-shadow:var(--sh);background:var(--s1);height:calc(100vh - 180px);min-height:500px}
 .process-iframe{width:100%;height:100%;border:none;display:block}
 ══════════════════════════════════════ */
-.sp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px}
+.sp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;min-width:0}
 .sp-nav-btn-group{display:flex;align-items:center;gap:6px;background:var(--s1);border:1px solid var(--bd2);border-radius:9px;padding:4px 10px}
 .sp-nav-btn{width:26px;height:26px;background:transparent;border:none}
 .sp-nav-btn:hover{background:var(--s3)}
@@ -3445,15 +3445,15 @@ tr.clickable:hover{background:var(--s2)!important}
     <div class="page" id="page-sprints">
       <!-- Header -->
       <div class="sp-header">
-        <div class="flex g8">
+        <div class="flex g8" style="align-items:center">
           <div class="sp-nav-btn-group">
-            <button class="tbn sp-nav-btn" onclick="spNavWeek(-1)"><i class="ti ti-chevron-left"></i></button>
+            <button class="tbn sp-nav-btn" onclick="spNavWeek(-1)" title="Semaine précédente"><i class="ti ti-chevron-left"></i></button>
             <span class="sp-range-label" id="sp-range-label">–</span>
-            <button class="tbn sp-nav-btn" onclick="spNavWeek(1)"><i class="ti ti-chevron-right"></i></button>
+            <button class="tbn sp-nav-btn" onclick="spNavWeek(1)" title="Semaine suivante"><i class="ti ti-chevron-right"></i></button>
           </div>
           <button class="tbn sp-today-btn" onclick="spGoToday()"><i class="ti ti-calendar-event" style="font-size:12px"></i>Today</button>
         </div>
-        <div class="flex g8">
+        <div class="flex g8" style="align-items:center">
           <select class="fsel" id="sp-member-filter" onchange="renderSprints()" style="min-width:130px">
             <option value="all">All Members</option>
             <option value="Houssam">Houssam</option>
@@ -4688,6 +4688,13 @@ function openWorkflowByName(name, el){
 /* ═══════════════════════════════════════
    DATA
 ═══════════════════════════════════════ */
+// ── v3 migration: wipe demo tasks & sprints from localStorage ─────────
+if(LS.getItem('ecopro_v') !== '3'){
+  LS.removeItem('ecopro_tasks');
+  LS.removeItem('ecopro_sprints');
+  LS.setItem('ecopro_v','3');
+}
+// ─────────────────────────────────────────────────────────────────────
 let tasks = readJSON('ecopro_tasks', null);
 // leads come from SpaceSeller API — never hardcoded
 let leads = [];
@@ -7104,8 +7111,8 @@ function simDeleteScenario(){
 // Load products from localStorage. Skip the legacy wipe migration if ANY product has a
 // non-empty tracking_code (= synced from SpaceSeller) — otherwise we'd lose real data.
 let products = readJSON('ecopro_products', null);
-if(products && !products.some(p=>p.status==='test') && !products.some(p=>(p.tracking_code||p.trackingCode||'').trim())){
-  // Old session AND no SpaceSeller-linked products — wipe and reload fresh defaults
+// Wipe if no product has a real trackingCode (= all are demo/fake products)
+if(products && !products.some(p=>(p.tracking_code||p.trackingCode||'').trim())){
   products = null;
   LS.removeItem('ecopro_products');
 }
@@ -7129,7 +7136,8 @@ if(products){
     })));
   });
 }
-if(!products){ products = []; }
+if(!products){ products = [];
+}
 
 function saveProducts(){
   LS.setItem('ecopro_products', JSON.stringify(products));
@@ -13690,8 +13698,6 @@ function bcRenderEnhanced(pid){
         <input class="bc-creative-link-input" placeholder="https://…" value="${xss(cr.link||'')}" onchange="bcSetField('${pid}',${idx},'link',this.value)">
         <span class="bc-creative-status-pill ${status}">${status}</span>
         <button class="tbn" title="Remove" onclick="bcRemove('${pid}',${idx})"><i class="ti ti-x"></i></button>
-      </div>
-
       </div>
       <div class="bc-creative-meta">
         <select onchange="bcSetField('${pid}',${idx},'creator',this.value)">
