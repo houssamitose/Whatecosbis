@@ -748,12 +748,13 @@ tbody td{padding:10px 12px}
 .process-embed-wrap{border:1px solid var(--bd);border-radius:12px;overflow:hidden;box-shadow:var(--sh);background:var(--s1);height:calc(100vh - 180px);min-height:500px}
 .process-iframe{width:100%;height:100%;border:none;display:block}
 ══════════════════════════════════════ */
-.sp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;min-width:0}
-.sp-nav-btn-group{display:flex;align-items:center;gap:6px;background:var(--s1);border:1px solid var(--bd2);border-radius:9px;padding:4px 10px}
-.sp-nav-btn{width:26px;height:26px;background:transparent;border:none}
+.sp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px;flex-wrap:nowrap}
+.sp-nav-btn-group{display:flex;align-items:center;gap:2px;background:var(--s1);border:1px solid var(--bd2);border-radius:10px;padding:4px 6px}
+.sp-nav-btn{width:28px;height:28px;background:transparent;border:none;border-radius:7px;color:var(--m1);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .1s}
 .sp-nav-btn:hover{background:var(--s3)}
-.sp-range-label{font-size:13px;font-weight:800;color:var(--txt);min-width:180px;text-align:center;letter-spacing:-.2px}
-.sp-today-btn{padding:6px 12px;border-radius:8px;border:1px solid var(--bd2);background:var(--s1);color:var(--m1);font-size:12px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all .12s}
+.sp-range-label{font-size:13px;font-weight:800;color:var(--txt);min-width:150px;text-align:center;letter-spacing:-.2px;padding:0 6px}
+.sp-vdiv{width:1px;height:16px;background:var(--bd2);margin:0 6px;flex-shrink:0}
+.sp-today-btn{padding:4px 10px;border-radius:7px;border:none;background:transparent;color:var(--m2);font-size:12px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all .12s;white-space:nowrap}
 .sp-today-btn:hover{background:var(--s3);color:var(--txt)}
 
 /* Sprint tabs */
@@ -3445,22 +3446,23 @@ tr.clickable:hover{background:var(--s2)!important}
     <div class="page" id="page-sprints">
       <!-- Header -->
       <div class="sp-header">
-        <div class="flex g8" style="align-items:center">
-          <div class="sp-nav-btn-group">
-            <button class="tbn sp-nav-btn" onclick="spNavWeek(-1)" title="Semaine précédente"><i class="ti ti-chevron-left"></i></button>
-            <span class="sp-range-label" id="sp-range-label">–</span>
-            <button class="tbn sp-nav-btn" onclick="spNavWeek(1)" title="Semaine suivante"><i class="ti ti-chevron-right"></i></button>
-          </div>
-          <button class="tbn sp-today-btn" onclick="spGoToday()"><i class="ti ti-calendar-event" style="font-size:12px"></i>Today</button>
+        <!-- Date nav + Today grouped in one pill -->
+        <div class="sp-nav-btn-group">
+          <button class="tbn sp-nav-btn" onclick="spNavWeek(-1)" title="Semaine précédente"><i class="ti ti-chevron-left"></i></button>
+          <span class="sp-range-label" id="sp-range-label">–</span>
+          <button class="tbn sp-nav-btn" onclick="spNavWeek(1)" title="Semaine suivante"><i class="ti ti-chevron-right"></i></button>
+          <span class="sp-vdiv"></span>
+          <button class="tbn sp-today-btn" onclick="spGoToday()">Today</button>
         </div>
-        <div class="flex g8" style="align-items:center">
-          <select class="fsel" id="sp-member-filter" onchange="renderSprints()" style="min-width:130px">
+        <!-- Actions -->
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <select class="fsel" id="sp-member-filter" onchange="renderSprints()" style="min-width:120px">
             <option value="all">All Members</option>
             <option value="Houssam">Houssam</option>
             <option value="Nissrine">Nissrine</option>
             <option value="Abdessamad">Abdessamad</option>
           </select>
-          <button class="btn btn-p" onclick="openSprintModal()" style="white-space:nowrap"><i class="ti ti-plus"></i>New Sprint</button>
+          <button class="btn btn-p" onclick="openSprintModal()"><i class="ti ti-plus"></i>New Sprint</button>
         </div>
       </div>
 
@@ -3772,8 +3774,14 @@ tr.clickable:hover{background:var(--s2)!important}
     </div>
     <div class="fgroup"><label class="flabel">Color</label>
       <div class="sp-color-picker" id="sp-color-picker">
-        ${['#5b50f0','#1e7dc8','#0aac6e','#c97a06','#d93535','#8b5cf6','#0891b2','#be185d'].map(c=>`
-          <div class="sp-color-dot" data-color="${c}" style="background:${c}" onclick="spPickColor('${c}',this)"></div>`).join('')}
+        <div class="sp-color-dot" data-color="#5b50f0" style="background:#5b50f0" onclick="spPickColor('#5b50f0',this)"></div>
+        <div class="sp-color-dot" data-color="#1e7dc8" style="background:#1e7dc8" onclick="spPickColor('#1e7dc8',this)"></div>
+        <div class="sp-color-dot" data-color="#0aac6e" style="background:#0aac6e" onclick="spPickColor('#0aac6e',this)"></div>
+        <div class="sp-color-dot" data-color="#c97a06" style="background:#c97a06" onclick="spPickColor('#c97a06',this)"></div>
+        <div class="sp-color-dot" data-color="#d93535" style="background:#d93535" onclick="spPickColor('#d93535',this)"></div>
+        <div class="sp-color-dot" data-color="#8b5cf6" style="background:#8b5cf6" onclick="spPickColor('#8b5cf6',this)"></div>
+        <div class="sp-color-dot" data-color="#0891b2" style="background:#0891b2" onclick="spPickColor('#0891b2',this)"></div>
+        <div class="sp-color-dot" data-color="#be185d" style="background:#be185d" onclick="spPickColor('#be185d',this)"></div>
       </div>
     </div>
     <div class="mfoot">
