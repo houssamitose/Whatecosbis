@@ -13801,4 +13801,43 @@ function renderTeamResults(){
         ${items.slice(0,8).map(cr=>`
           <div class="tr-creative-item ${cr.status}">
             <i class="ti ti-${cr.status==='winning'?'trophy':cr.status==='failed'?'x':'flask'}"></i>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
+            <span class="tr-creative-name">${xss(cr.productName)}</span>
+            <span class="tr-creative-roas">${cr.roas.toFixed(2)}x</span>
+          </div>`).join('')}
+        ${items.length>8?`<div style="font-size:10.5px;color:var(--m2);padding:4px 0">+${items.length-8} more…</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ── Background sync helpers ─────────────────────────────────────────────── */
+let _ssSilentTimer=0;
+function ssSilentSyncThrottled(){
+  clearTimeout(_ssSilentTimer);
+  _ssSilentTimer=setTimeout(function(){
+    if(typeof ssToken==='undefined'||!ssToken) return;
+    try{ if(typeof syncSpaceSeller==='function') syncSpaceSeller(); }catch(_){}
+  },1500);
+}
+setInterval(ssSilentSyncThrottled, 90000);
+window.addEventListener('focus', function(){ ssSilentSyncThrottled(); });
+document.addEventListener('visibilitychange', function(){ if(!document.hidden) ssSilentSyncThrottled(); });
+
+(function hookGoPageForSync(){
+  if(typeof window.goPage !== 'function') return;
+  var orig = window.goPage;
+  window.goPage = function(name, el){
+    var r = orig.apply(this, arguments);
+    if(['overview','leads','spaceseller','customers'].indexOf(name) !== -1){
+      ssSilentSyncThrottled();
+    }
+    if(name === 'products'){
+      try{ renderSheetSources(); }catch(_){}
+    }
+    return r;
+  };
+})();
+
+</script>
+</body>
+</html>
