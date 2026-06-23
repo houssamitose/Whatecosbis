@@ -2084,9 +2084,6 @@ tr.clickable:hover{background:var(--s2)!important}
           </div>
           <select class="fsel" onchange="filterTasksBy(this.value)" id="tfilter" style="min-width:130px">
             <option value="all">All Members</option>
-            <option value="Houssam">Houssam</option>
-            <option value="Nissrine">Nissrine</option>
-            <option value="Abdessamad">Abdessamad</option>
           </select>
           <button class="btn btn-p" onclick="openTaskModal('todo')"><i class="ti ti-plus"></i>New Task</button>
         </div>
@@ -3553,9 +3550,6 @@ tr.clickable:hover{background:var(--s2)!important}
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
           <select class="fsel" id="sp-member-filter" onchange="renderSprints()" style="min-width:120px">
             <option value="all">All Members</option>
-            <option value="Houssam">Houssam</option>
-            <option value="Nissrine">Nissrine</option>
-            <option value="Abdessamad">Abdessamad</option>
           </select>
           <button class="btn btn-p" onclick="openSprintModal()"><i class="ti ti-plus"></i>New Sprint</button>
         </div>
@@ -3619,7 +3613,7 @@ tr.clickable:hover{background:var(--s2)!important}
     <div class="fgroup"><label class="flabel">Description</label><textarea class="ftextarea" id="tm-desc" placeholder="Describe the task…"></textarea></div>
     <div class="fgrid2">
       <div class="fgroup"><label class="flabel">Status</label><select class="fselect" id="tm-status"><option value="todo">To Do</option><option value="doing">In Progress</option><option value="done">Done</option></select></div>
-      <div class="fgroup"><label class="flabel">Responsible</label><select class="fselect" id="tm-resp"><option value="Houssam">Houssam</option><option value="Nissrine">Nissrine</option><option value="Abdessamad">Abdessamad</option></select></div>
+      <div class="fgroup"><label class="flabel">Responsible</label><select class="fselect" id="tm-resp"><option value="all">All Members</option></select></div>
     </div>
     <div class="fgrid2">
       <div class="fgroup"><label class="flabel">Priority</label><select class="fselect" id="tm-priority"><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></div>
@@ -3668,7 +3662,7 @@ tr.clickable:hover{background:var(--s2)!important}
       <div class="fgroup"><label class="flabel">City</label><input type="text" class="finput" id="lm-city" placeholder="Agadir"></div>
       <div class="fgroup"><label class="flabel">Status</label><select class="fselect" id="lm-status"><option value="new">New</option><option value="confirmed">Confirmed</option><option value="delivered">Delivered</option><option value="returned">Returned</option></select></div>
     </div>
-    <div class="fgroup"><label class="flabel">Agent</label><select class="fselect" id="lm-agent"><option>Houssam</option><option>Nissrine</option><option>Abdessamad</option></select></div>
+    <div class="fgroup"><label class="flabel">Agent</label><select class="fselect" id="lm-agent"><option value="all">All Members</option></select></div>
     <div class="mfoot">
       <button class="btn btn-g" onclick="closeLeadModal()">Cancel</button>
       <button class="btn btn-p" onclick="saveLead()"><i class="ti ti-check"></i>Save Lead</button>
@@ -3898,7 +3892,7 @@ tr.clickable:hover{background:var(--s2)!important}
     <div class="fgroup"><label class="flabel">Task Title *</label><input type="text" class="finput" id="spt-title" placeholder="Task title…"></div>
     <div class="fgrid2">
       <div class="fgroup"><label class="flabel">Responsible</label>
-        <select class="fselect" id="spt-resp"><option>Houssam</option><option>Nissrine</option><option>Abdessamad</option></select>
+        <select class="fselect" id="spt-resp"><option value="all">All Members</option></select>
       </div>
       <div class="fgroup"><label class="flabel">Status</label>
         <select class="fselect" id="spt-status"><option value="todo">To Do</option><option value="doing">In Progress</option><option value="done">Done</option></select>
@@ -14236,6 +14230,31 @@ document.addEventListener('visibilitychange', function(){ if(!document.hidden) s
 
 })();
 
+
+/* ── Dynamic team member dropdowns ── */
+function buildMemberOptions(includeAll=true, selectedVal=''){
+  const members = readJSON('ecos_team_members',[]) || [];
+  let opts = includeAll ? '<option value="all">All Members</option>' : '';
+  opts += members.map(u=>`<option value="${u.name}"${selectedVal===u.name?' selected':''}>${u.name}</option>`).join('');
+  return opts;
+}
+function refreshMemberSelects(){
+  ['tfilter','mv-member','sp-member-filter'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    const cur=el.value;
+    el.innerHTML=buildMemberOptions(true, cur);
+  });
+  /* Task modal responsible */
+  const tmr=document.getElementById('tm-resp');
+  if(tmr){ const c=tmr.value; tmr.innerHTML=buildMemberOptions(false,c); }
+  /* Lead modal agent */
+  const lma=document.getElementById('lm-agent');
+  if(lma){ const c=lma.value; lma.innerHTML=buildMemberOptions(false,c); }
+  /* Sprint responsible */
+  const spt=document.getElementById('spt-resp');
+  if(spt){ const c=spt.value; spt.innerHTML=buildMemberOptions(false,c); }
+}
 /* ── Bootstrap auth on every page load ── */
 (function bootstrapAuth(){
   /* Ensure default users/perms exist */
@@ -14246,6 +14265,8 @@ document.addEventListener('visibilitychange', function(){ if(!document.hidden) s
     if(typeof hideLogin === 'function') hideLogin();
     if(typeof applyAuthUI === 'function') try{ applyAuthUI(); }catch(_){}
   }
+  /* Populate all team member dropdowns */
+  setTimeout(refreshMemberSelects, 100);
 })();
 
 function aiQuickAsk(el){
