@@ -6377,8 +6377,10 @@ function renderOverview(){
 function renderTopCreatives(){
   const tbody = document.getElementById('ov-creatives-tbody');
   if(!tbody) return;
-  const camps = (typeof af_campaigns!=='undefined' && Array.isArray(af_campaigns)) ? af_campaigns : [];
-  if(!camps.length){
+  /* Use ads-level data if available, otherwise campaign-level */
+  const useAds = Array.isArray(adsData) && adsData.length > 0;
+  const source = useAds ? adsData : ((typeof af_campaigns!=='undefined' && Array.isArray(af_campaigns)) ? af_campaigns : []);
+  if(!source.length){
     tbody.innerHTML=`<tr><td colspan="9" style="text-align:center;padding:28px 20px;color:var(--m2)">
       <i class="ti ti-brand-meta" style="font-size:22px;display:block;margin-bottom:8px;opacity:.4"></i>
       Connecte tes comptes Meta Ads dans <strong>Campaigns</strong> pour voir tes créatifs ici.
@@ -6386,26 +6388,29 @@ function renderTopCreatives(){
     return;
   }
   /* Sort by spend desc, take top 10 */
-  const sorted = [...camps].sort((a,b)=>parseFloat(b.spend||0)-parseFloat(a.spend||0)).slice(0,10);
+  const sorted = [...source].sort((a,b)=>parseFloat(b.spend||0)-parseFloat(a.spend||0)).slice(0,10);
   tbody.innerHTML = sorted.map(c=>{
     const spend = parseFloat(c.spend||0);
     const impr  = parseInt(c.impressions||0);
     const clicks= parseInt(c.clicks||0);
     const reach = parseInt(c.reach||0);
-    const purchases = parseInt(c.actions?.find?.(a=>a.action_type==='purchase')?.value||c.conversions||0);
+    const purchases = parseInt(c.purch||c.actions?.find?.(a=>a.action_type==='purchase')?.value||c.conversions||0);
     const ctr   = impr>0 ? (clicks/impr*100).toFixed(2)+'%' : '–';
     const cpm   = impr>0 ? (spend/impr*1000).toFixed(2) : '–';
     const cpa   = purchases>0 ? (spend/purchases).toFixed(0)+' MAD' : '–';
-    const hookRate = reach>0 && impr>0 ? Math.min(100,(impr/reach*100)).toFixed(1)+'%' : '–';
+    const hookRate = c.hook_rate>0 ? c.hook_rate.toFixed(1)+'%' : (reach>0&&impr>0?Math.min(100,(impr/reach*100)).toFixed(1)+'%':'–');
     const statusDot = c.status==='ACTIVE'
       ? '<span style="color:var(--green);font-size:10px">● </span>'
       : '<span style="color:var(--m2);font-size:10px">● </span>';
+    /* Ad name + adset context if available */
+    const nameDisplay = useAds
+      ? `${statusDot}${xss(c.name||'–')}${c.adsetName?`<div style="font-size:10.5px;color:var(--m2);font-weight:400">Adset: ${xss(c.adsetName)}</div>`:''}`
+      : `${statusDot}${xss(c.name||'–')}${c.objective?`<div style="font-size:10.5px;color:var(--m2);font-weight:400">${xss(c.objective)}</div>`:''}`;
     return `<tr>
       <td><div style="font-size:12px;font-weight:600;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${xss(c.name||'')}">
-        ${statusDot}${xss(c.name||'–')}
-        ${c.objective?`<div style="font-size:10.5px;color:var(--m2);font-weight:400">${xss(c.objective)}</div>`:''}
+        ${nameDisplay}
       </div></td>
-      <td style="font-size:11px;color:var(--m1)">${xss(c.account_name||c.account_id||'–')}</td>
+      <td style="font-size:11px;color:var(--m1)">${xss(c.accName||c.account_name||c.account_id||'–')}</td>
       <td style="text-align:right;font-weight:600;color:var(--acc)">${spend.toLocaleString(undefined,{maximumFractionDigits:0})} MAD</td>
       <td style="text-align:right">${impr>0?impr.toLocaleString():'–'}</td>
       <td style="text-align:right">${hookRate}</td>
@@ -10733,6 +10738,8 @@ async function fetchAdsForAdsets(adsetIds) {
   document.getElementById('campUpd').textContent = 'Updated ' + new Date().toLocaleTimeString();
   updateTabBadges();
   renderAds();
+  /* Cache ads for Top Creatives widget */
+  try{ localStorage.setItem('af_ads_cache', JSON.stringify({ts:Date.now(), data:adsData})); }catch(_){}
   af_toast('Loaded ' + adsData.length + ' ads');
 }
 
@@ -11163,9 +11170,13 @@ function loadAccounts() {
     });
     if (af_accounts.length) { updateBadges(); rebuildAccDrop(); renderAccCards(); fetchAll(); }
   } catch(e) {
-    // Corrupted storage — clear and start fresh
     localStorage.removeItem('adflow-af_accounts');
   }
+  /* Restore ads cache so Top Creatives works immediately */
+  try{
+    const _ac=localStorage.getItem('af_ads_cache');
+    if(_ac){ const _p=JSON.parse(_ac); if(_p.data&&_p.data.length){ adsData=_p.data; } }
+  }catch(_){}
 }
 
 // ══════════════════ TOKEN EXPIRY ══════════════════
