@@ -2122,9 +2122,6 @@ tr.clickable:hover{background:var(--s2)!important}
           </div>
           <select class="fsel" onchange="filterTasksBy(this.value);renderMonthlyView()" id="mv-member">
             <option value="all">All Members</option>
-            <option value="Houssam">Houssam</option>
-            <option value="Nissrine">Nissrine</option>
-            <option value="Abdessamad">Abdessamad</option>
           </select>
         </div>
       </div>
@@ -4124,6 +4121,25 @@ function seedAuth(){
     }];
     LS.setItem('ecos_team_members', JSON.stringify(users));
   }
+  /* Ensure Nissrine exists as manager */
+  let _nissrine = users.find(u=>u.name==='Nissrine'||u.email==='nissrine@ecos.com');
+  if(!_nissrine){
+    users.push({
+      id:'u_nissrine',
+      name:'Nissrine',
+      email:'nissrine@ecos.com',
+      role:'admin',
+      password:'ecos2026',
+      createdAt:Date.now(),
+      note:'Manager — full access'
+    });
+    LS.setItem('ecos_team_members', JSON.stringify(users));
+  } else if(_nissrine.role !== 'admin'){
+    _nissrine.role = 'admin';
+    LS.setItem('ecos_team_members', JSON.stringify(users));
+  }
+  if(false){/* dummy close*/
+  }
   let perms = readJSON('ecos_role_perms', null);
   if(!perms){
     perms = JSON.parse(JSON.stringify(DEFAULT_PERMS));
@@ -4965,6 +4981,14 @@ function mvNavMonth(dir){
 }
 
 function renderMonthlyView(){
+  /* Populate member dropdown from team */
+  const _mvSel = document.getElementById('mv-member');
+  if(_mvSel){
+    const _cur = _mvSel.value;
+    const _teamUsers = (readJSON('ecos_team_members',[])||[]);
+    _mvSel.innerHTML = '<option value="all">All Members</option>' +
+      _teamUsers.map(u=>`<option value="${u.name}"${_cur===u.name?' selected':''}>${u.name}</option>`).join('');
+  }
   const year=mvCurrentDate.getFullYear();
   const month=mvCurrentDate.getMonth()+1;
   const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
