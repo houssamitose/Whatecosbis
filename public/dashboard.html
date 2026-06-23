@@ -14292,6 +14292,124 @@ function clearAiChat(){
 }
 
 
+/* ════════════════════════════════════════
+   MISSING FUNCTIONS — fixed
+   ════════════════════════════════════════ */
+
+/* ── Overview date presets ── */
+let ovRange = { start:'', end:'' };
+function setOvPreset(preset){
+  const now = new Date();
+  const fmt = d => d.toISOString().split('T')[0];
+  let start, end = fmt(now);
+  if(preset==='today')     { start=end; }
+  else if(preset==='7d')   { const d=new Date(now); d.setDate(d.getDate()-6); start=fmt(d); }
+  else if(preset==='30d')  { const d=new Date(now); d.setDate(d.getDate()-29); start=fmt(d); }
+  else if(preset==='90d')  { const d=new Date(now); d.setDate(d.getDate()-89); start=fmt(d); }
+  else if(preset==='thismonth'){ start=fmt(new Date(now.getFullYear(),now.getMonth(),1)); }
+  else if(preset==='lastmonth'){
+    const f=new Date(now.getFullYear(),now.getMonth()-1,1);
+    const l=new Date(now.getFullYear(),now.getMonth(),0);
+    start=fmt(f); end=fmt(l);
+  }
+  ovRange = {start, end};
+  /* Update date inputs */
+  const ds=document.getElementById('ov-date-start');
+  const de=document.getElementById('ov-date-end');
+  if(ds) ds.value=start;
+  if(de) de.value=end;
+  /* Highlight active button */
+  document.querySelectorAll('.ov-preset-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.preset===preset);
+  });
+  /* Update period label */
+  const lbl=document.getElementById('ov-period-label');
+  if(lbl) lbl.textContent=start===end?start:start+' → '+end;
+  if(typeof renderOverview==='function') renderOverview();
+}
+
+/* ── Team Results month navigation ── */
+let _trYear = new Date().getFullYear();
+let _trMonth = new Date().getMonth(); // 0-based
+function trChangeMonth(dir){
+  _trMonth += dir;
+  if(_trMonth > 11){ _trMonth=0; _trYear++; }
+  if(_trMonth < 0){ _trMonth=11; _trYear--; }
+  const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const lbl = document.getElementById('tr-month-label');
+  if(lbl) lbl.textContent = MONTHS[_trMonth]+' '+_trYear;
+  if(typeof renderTeam==='function') renderTeam();
+}
+
+/* ── SpaceSeller sync (alias for the leads fetch) ── */
+function syncSpaceSeller(){
+  const btn = document.getElementById('ld-fetch-btn') || document.getElementById('ss-sync-leads-btn');
+  if(btn && !btn.disabled) btn.click();
+}
+
+/* ── AI send message ── */
+async function sendAiMessage(){
+  const inp = document.getElementById('ai-input');
+  if(!inp) return;
+  const text = (inp.value||'').trim();
+  if(!text) return;
+  inp.value='';
+  inp.style.height='auto';
+
+  const msgs = document.getElementById('ai-msgs');
+  const empty = document.getElementById('ai-empty');
+  if(empty) empty.style.display='none';
+
+  /* User bubble */
+  const userBubble = document.createElement('div');
+  userBubble.className='ai-msg user';
+  userBubble.innerHTML=`<div class="ai-bubble">${text.replace(/</g,'&lt;')}</div>`;
+  if(msgs) msgs.appendChild(userBubble);
+
+  /* Loading bubble */
+  const loadBubble = document.createElement('div');
+  loadBubble.className='ai-msg assistant';
+  loadBubble.innerHTML=`<div class="ai-bubble"><span class="ai-thinking">...</span></div>`;
+  if(msgs) msgs.appendChild(loadBubble);
+  if(msgs) msgs.scrollTop=msgs.scrollHeight;
+
+  const key = typeof aiGetKey==='function' ? aiGetKey() : '';
+  if(!key){
+    loadBubble.querySelector('.ai-bubble').textContent='⚠️ Clé Claude API manquante — ajoute-la dans Settings → API Keys.';
+    return;
+  }
+
+  aiHistory.push({role:'user', content:text});
+  try{
+    const body = {
+      model:'claude-haiku-4-5-20251001',
+      max_tokens:1024,
+      system: typeof AI_SYSTEM_PROMPT!=='undefined' ? AI_SYSTEM_PROMPT : 'You are a helpful e-commerce business assistant.',
+      messages: aiHistory.slice(-20),
+    };
+    const resp = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key': key,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify(body),
+    });
+    const data = await resp.json();
+    if(data.error){ throw new Error(data.error.message); }
+    const reply = data.content?.[0]?.text || '(pas de réponse)';
+    aiHistory.push({role:'assistant', content:reply});
+    loadBubble.querySelector('.ai-bubble').innerHTML = reply.replace(/</g,'&lt;').replace(/\n/g,'<br>');
+  } catch(e){
+    loadBubble.querySelector('.ai-bubble').textContent = '⚠️ Erreur: '+e.message;
+  }
+  if(msgs) msgs.scrollTop=msgs.scrollHeight;
+}
+
+/* ══ end missing functions ══ */
+
 </script>
 </body>
 </html>
