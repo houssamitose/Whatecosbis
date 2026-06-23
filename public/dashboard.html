@@ -6627,11 +6627,40 @@ function procBlockEl(b, i, doc, stepNum){
       cb.style.cssText = 'width:16px;height:16px;cursor:pointer;accent-color:var(--acc);flex-shrink:0';
       cb.addEventListener('change',()=>{ if(!b.checked)b.checked=[]; b.checked[ci]=cb.checked; procSave(); });
       const inp = document.createElement('div');
-      inp.contentEditable = 'true';
+      inp.contentEditable = 'true'; inp.className = 'checklist-inp';
       inp.style.cssText = 'flex:1;font-size:12.5px;color:var(--txt);outline:none;text-decoration:'+(b.checked?.[ci]?'line-through':'none')+';opacity:'+(b.checked?.[ci]?'.5':'1');
       inp.textContent = txt;
       inp.dataset.placeholder = 'Élément…';
       inp.addEventListener('input',()=>{ b.items[ci]=inp.textContent; procSave(); });
+      inp.addEventListener('keydown',(e)=>{
+        if(e.key==='Enter'){
+          e.preventDefault();
+          /* Save current text, insert empty item after current index */
+          b.items[ci]=inp.textContent;
+          b.items.splice(ci+1,0,'');
+          if(b.checked) b.checked.splice(ci+1,0,false);
+          procSave();
+          procRenderBlocks();
+          /* Focus the newly inserted item */
+          setTimeout(()=>{
+            const rows=document.querySelectorAll('#proc-editor .checklist-inp');
+            if(rows[ci+1]) rows[ci+1].focus();
+          },30);
+        } else if(e.key==='Backspace'&&inp.textContent===''){
+          e.preventDefault();
+          if(b.items.length>1){
+            b.items.splice(ci,1);
+            if(b.checked) b.checked.splice(ci,1);
+            procSave();
+            procRenderBlocks();
+            setTimeout(()=>{
+              const rows=document.querySelectorAll('#proc-editor .checklist-inp');
+              const prev=rows[Math.max(0,ci-1)];
+              if(prev){ prev.focus(); /* move cursor to end */ const r=document.createRange(),s=window.getSelection(); r.selectNodeContents(prev); r.collapse(false); s.removeAllRanges(); s.addRange(r); }
+            },30);
+          }
+        }
+      });
       const del = document.createElement('button');
       del.innerHTML = '<i class="ti ti-x" style="font-size:10px"></i>';
       del.style.cssText = 'background:none;border:none;cursor:pointer;color:var(--m2);opacity:.5;transition:opacity .12s;padding:2px 4px';
