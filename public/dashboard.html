@@ -9562,7 +9562,7 @@ function setPlatformFilter_ad_(p, btn) {
   renderAds();
 }
 let sortK = null, sortD = -1;
-let cols = {spend:1,purch:1,cpl:1,reach:1,ctr:1,freq:1,impr:0,clicks:0,cpc:0,cpm:0,budget:0,obj:0};
+let cols = {spend:1,purch:1,cpl:1,reach:1,ctr:1,freq:1,impr:1,clicks:0,cpc:0,cpm:0,budget:1,obj:0,thruplays:1,hook_rate:1,link_to_purch:1};
 let datePreset = 'last30';
 let dateLabel = 'Last 30 days';
 let calState = { year: new Date().getFullYear(), month: new Date().getMonth(), start: null, end: null, picking: 0 };
@@ -10157,12 +10157,17 @@ async function fetchAll() {
         const purch   = parseInt(actions.find(a=>a.action_type==='purchase')?.value||0)
                       + parseInt(actions.find(a=>a.action_type==='offsite_conversion.fb_pixel_purchase')?.value||0);
         const video3 = parseInt(actions.find(a=>a.action_type==='video_view'||a.action_type==='video_3_sec_watched_actions')?.value||0);
+        const thruplays = parseInt(actions.find(a=>a.action_type==='video_thruplay_watched_actions')?.value||0);
         const leads   = parseInt(actions.find(a=>a.action_type==='lead')?.value||0)
                       + parseInt(actions.find(a=>a.action_type==='onsite_conversion.lead_grouped')?.value||0);
         const results = purch || leads || parseInt(actions.find(a=>a.action_type==='post_engagement')?.value||0);
         const spend   = parseFloat(ins.spend||0);
+        const impr    = parseInt(ins.impressions||0);
         // Cost per result = spend / results (exactly what FB shows)
         const cpl     = (spend > 0 && results > 0) ? +(spend / results).toFixed(2) : 0;
+        const hook_rate = impr > 0 ? +(video3 / impr * 100).toFixed(1) : 0;
+        const link_clicks_c = parseInt(actions.find(a=>a.action_type==='link_click')?.value||0) || parseInt(ins.clicks||0);
+        const link_to_purch = link_clicks_c > 0 ? +(results / link_clicks_c * 100).toFixed(2) : 0;
         accSpend += spend;
         if (c.status === 'ACTIVE') accActive++;
         return {
@@ -10173,7 +10178,7 @@ async function fetchAll() {
           cpc:parseFloat(ins.cpc||0), cpm:parseFloat(ins.cpm||0),
           reach:parseInt(ins.reach||0), freq:parseFloat(ins.frequency||0),
           purch: results, cpl, budget:parseFloat(c.daily_budget||c.lifetime_budget||0)/100,
-          video_3sec: video3
+          video_3sec: video3, thruplays, hook_rate, link_to_purch
         };
       });
       acc.spend = accSpend; acc.active = accActive; acc.af_campaigns = items.length;
@@ -10252,8 +10257,8 @@ function buildTbl(data, mini) {
   th += `<th class="sa ${sortK==='name'?sortD>0?'sA':'sD':''}" onclick="doSort('name')">Campaign</th>`;
   th += `<th>Status</th>`;
   if (c.spend||mini) th+=`<th class="sa ${sortK==='spend'?sortD>0?'sA':'sD':''}" onclick="doSort('spend')">Spend</th>`;
-  if (c.purch||mini) th+=`<th class="sa ${sortK==='purch'?sortD>0?'sA':'sD':''}" onclick="doSort('purch')">Purchases</th>`;
-  if (c.cpl||mini) th+=`<th class="sa ${sortK==='cpl'?sortD>0?'sA':'sD':''}" onclick="doSort('cpl')">CPL</th>`;
+  if (c.purch||mini) th+=`<th class="sa ${sortK==='purch'?sortD>0?'sA':'sD':''}" onclick="doSort('purch')">Results</th>`;
+  if (c.cpl||mini) th+=`<th class="sa ${sortK==='cpl'?sortD>0?'sA':'sD':''}" onclick="doSort('cpl')">Cost/Result</th>`;
   if (c.reach||mini) th+=`<th class="sa ${sortK==='reach'?sortD>0?'sA':'sD':''}" onclick="doSort('reach')">Reach</th>`;
   if (c.ctr||mini) th+=`<th class="sa ${sortK==='ctr'?sortD>0?'sA':'sD':''}" onclick="doSort('ctr')">CTR</th>`;
   if (c.freq||mini) th+=`<th class="sa ${sortK==='freq'?sortD>0?'sA':'sD':''}" onclick="doSort('freq')">Freq.</th>`;
@@ -10261,8 +10266,11 @@ function buildTbl(data, mini) {
   if (!mini&&c.clicks) th+=`<th class="sa" onclick="doSort('clicks')">Clicks</th>`;
   if (!mini&&c.cpc) th+=`<th class="sa" onclick="doSort('cpc')">CPC</th>`;
   if (!mini&&c.cpm) th+=`<th class="sa" onclick="doSort('cpm')">CPM</th>`;
-  if (!mini&&c.budget) th+=`<th>Budget/d</th>`;
+  if (!mini&&c.budget) th+=`<th class="sa" onclick="doSort('budget')">Budget/d</th>`;
   if (!mini&&c.obj) th+=`<th>Objective</th>`;
+  if (!mini&&c.thruplays) th+=`<th class="sa" onclick="doSort('thruplays')">ThruPlays</th>`;
+  if (!mini&&c.hook_rate) th+=`<th class="sa" onclick="doSort('hook_rate')">Hook Rate</th>`;
+  if (!mini&&c.link_to_purch) th+=`<th class="sa" onclick="doSort('link_to_purch')">Lk→Purch%</th>`;
   if (!mini) th+=`<th style="cursor:default;text-align:center">Actions</th>`;
 
   const rows = data.map(r => {
@@ -10291,6 +10299,9 @@ function buildTbl(data, mini) {
     if (!mini&&c.cpm) row+=`<td class="nr">${r.cpm?'$'+r.cpm.toFixed(2):'—'}</td>`;
     if (!mini&&c.budget) row+=`<td class="nr">${r.budget?'$'+r.budget.toFixed(0):'—'}</td>`;
     if (!mini&&c.obj) row+=`<td><span style="font-size:11px;color:var(--t2)">${r.objective}</span></td>`;
+    if (!mini&&c.thruplays) row+=`<td class="nr ${r.thruplays>0?'ng':''}">${r.thruplays>0?fmt(r.thruplays):'—'}</td>`;
+    if (!mini&&c.hook_rate) row+=`<td class="nr ${r.hook_rate>30?'ng':r.hook_rate>0&&r.hook_rate<10?'nb':''}">${r.hook_rate>0?r.hook_rate.toFixed(1)+'%':'—'}</td>`;
+    if (!mini&&c.link_to_purch) row+=`<td class="nr ${r.link_to_purch>5?'ng':''}">${r.link_to_purch>0?r.link_to_purch.toFixed(2)+'%':'—'}</td>`;
     if (!mini) row+=`<td><div style="display:flex;gap:6px;align-items:center">
       <button class="tog ${r.status==='ACTIVE'?'on':'off'}" onclick="togCamp('${r.id}','${r.accId}',${r.status==='ACTIVE'})" title="${r.status==='ACTIVE'?'Pause':'Activate'}"></button>
       <button class="rib" onclick="openFB('${r.id}')" title="Open in FB Ads Manager">↗</button>
@@ -10618,11 +10629,11 @@ async function fetchAdSetsForCampaigns(campaignIds) {
   if (datePreset === 'custom' && calState.start && calState.end) {
     const since = calState.start.toISOString().split('T')[0];
     const until = calState.end.toISOString().split('T')[0];
-    adsetInsightsField = 'insights.time_range({"since":"' + since + '","until":"' + until + '"}){spend,impressions,clicks,ctr,reach,frequency}';
+    adsetInsightsField = 'insights.time_range({"since":"' + since + '","until":"' + until + '"}){spend,impressions,clicks,ctr,reach,frequency,actions}';
   } else if (preset) {
     adsetInsightsField = 'insights.date_preset(' + preset + '){spend,impressions,clicks,ctr,reach,frequency}';
   } else {
-    adsetInsightsField = 'insights{spend,impressions,clicks,ctr,reach,frequency}';
+    adsetInsightsField = 'insights{spend,impressions,clicks,ctr,reach,frequency,actions}';
   }
 
   const results = await Promise.all(campaignIds.map(async campId => {
@@ -10671,11 +10682,11 @@ async function fetchAdsForAdsets(adsetIds) {
   if (datePreset === 'custom' && calState.start && calState.end) {
     const since = calState.start.toISOString().split('T')[0];
     const until = calState.end.toISOString().split('T')[0];
-    adsInsightsField = 'insights.time_range({"since":"' + since + '","until":"' + until + '"}){spend,impressions,clicks,ctr,reach,cpc}';
+    adsInsightsField = 'insights.time_range({"since":"' + since + '","until":"' + until + '"}){spend,impressions,clicks,ctr,reach,cpc,actions}';
   } else if (preset) {
     adsInsightsField = 'insights.date_preset(' + preset + '){spend,impressions,clicks,ctr,reach,cpc}';
   } else {
-    adsInsightsField = 'insights{spend,impressions,clicks,ctr,reach,cpc}';
+    adsInsightsField = 'insights{spend,impressions,clicks,ctr,reach,cpc,actions}';
   }
 
   const results = await Promise.all(adsetIds.map(async adsetId => {
@@ -10726,7 +10737,7 @@ async function fetchAdSets() {
     const acc = af_accounts.find(a => a.id === fAdsetAcc) || af_accounts[0];
     console.log('[AdFlow] fetchAdSets drill mode, campaignId:', fAdsetCampaignId, 'acc:', acc?.id);
     try {
-      const insF = preset ? `insights.date_preset(${preset}){spend,impressions,clicks,ctr,reach,frequency}` : (datePreset==='custom'&&calState.start&&calState.end ? `insights.time_range({"since":"${calState.start.toISOString().split('T')[0]}","until":"${calState.end.toISOString().split('T')[0]}"}){spend,impressions,clicks,ctr,reach,frequency}` : 'insights{spend,impressions,clicks,ctr,reach,frequency}');
+      const insF = preset ? `insights.date_preset(${preset}){spend,impressions,clicks,ctr,reach,frequency,actions}` : (datePreset==='custom'&&calState.start&&calState.end ? `insights.time_range({"since":"${calState.start.toISOString().split('T')[0]}","until":"${calState.end.toISOString().split('T')[0]}"}){spend,impressions,clicks,ctr,reach,frequency}` : 'insights{spend,impressions,clicks,ctr,reach,frequency}');
       const url = `https://graph.facebook.com/v19.0/${fAdsetCampaignId}/adsets?fields=name,status,daily_budget,lifetime_budget,${insF}&limit=200&access_token=${acc.token}`;
       console.log('[AdFlow] fetching URL:', url.replace(acc.token, 'TOKEN'));
       const r = await fetch(url);
@@ -10760,7 +10771,11 @@ async function fetchAdSets() {
             spend:parseFloat(ins.spend||0), impressions:parseInt(ins.impressions||0),
             clicks:parseInt(ins.clicks||0), ctr:parseFloat(ins.ctr||0),
             reach:parseInt(ins.reach||0), freq:parseFloat(ins.frequency||0),
-            budget:parseFloat(s.daily_budget||s.lifetime_budget||0)/100 });
+            budget:parseFloat(s.daily_budget||s.lifetime_budget||0)/100,
+            thruplays:parseInt((ins.actions||[]).find(a=>a.action_type==='video_thruplay_watched_actions')?.value||0),
+            hook_rate:(()=>{const v3=parseInt((ins.actions||[]).find(a=>a.action_type==='video_view'||a.action_type==='video_3_sec_watched_actions')?.value||0);const im=parseInt(ins.impressions||0);return im>0?+(v3/im*100).toFixed(1):0;})(),
+            link_to_purch:(()=>{const res=parseInt((ins.actions||[]).find(a=>a.action_type==='purchase'||a.action_type==='offsite_conversion.fb_pixel_purchase')?.value||0);const lk=parseInt((ins.actions||[]).find(a=>a.action_type==='link_click')?.value||0)||parseInt(ins.clicks||0);return lk>0?+(res/lk*100).toFixed(2):0;})()
+          });
         });
       } catch(e) { console.error(e); }
     }
@@ -10842,7 +10857,7 @@ async function fetchAds() {
   if (fAdsAdsetId) {
     const acc = af_accounts.find(a => a.id === fAdsAcc) || af_accounts[0];
     try {
-      const insF3 = preset ? `insights.date_preset(${preset}){spend,impressions,clicks,ctr,reach,cpc}` : (datePreset==='custom'&&calState.start&&calState.end ? `insights.time_range({"since":"${calState.start.toISOString().split('T')[0]}","until":"${calState.end.toISOString().split('T')[0]}"}){spend,impressions,clicks,ctr,reach,cpc}` : 'insights{spend,impressions,clicks,ctr,reach,cpc}');
+      const insF3 = preset ? `insights.date_preset(${preset}){spend,impressions,clicks,ctr,reach,cpc,actions}` : (datePreset==='custom'&&calState.start&&calState.end ? `insights.time_range({"since":"${calState.start.toISOString().split('T')[0]}","until":"${calState.end.toISOString().split('T')[0]}"}){spend,impressions,clicks,ctr,reach,cpc}` : 'insights{spend,impressions,clicks,ctr,reach,cpc}');
       const url = `https://graph.facebook.com/v19.0/${fAdsAdsetId}/ads?fields=name,status,${insF3}&limit=200&access_token=${acc.token}`;
       const r = await fetch(url);
       const d = await r.json();
@@ -10852,10 +10867,17 @@ async function fetchAds() {
       }
       (d.data || []).forEach(a => {
         const ins = a.insights?.data?.[0] || {};
+        const adIns = ins.actions||[];
         adsData.push({ id:a.id, name:a.name, status:a.status, accId:acc.id, accName:acc.name,
+          adsetName: adsets.find(s=>s.id===fAdsAdsetId)?.name||'',
           spend:parseFloat(ins.spend||0), impressions:parseInt(ins.impressions||0),
           clicks:parseInt(ins.clicks||0), ctr:parseFloat(ins.ctr||0),
-          reach:parseInt(ins.reach||0), cpc:parseFloat(ins.cpc||0) });
+          reach:parseInt(ins.reach||0), cpc:parseFloat(ins.cpc||0),
+          thruplays:parseInt(adIns.find(a=>a.action_type==='video_thruplay_watched_actions')?.value||0),
+          hook_rate:(()=>{const v3=parseInt(adIns.find(a=>a.action_type==='video_view'||a.action_type==='video_3_sec_watched_actions')?.value||0);const im=parseInt(ins.impressions||0);return im>0?+(v3/im*100).toFixed(1):0;})(),
+          purch:parseInt(adIns.find(a=>a.action_type==='purchase'||a.action_type==='offsite_conversion.fb_pixel_purchase')?.value||0),
+          link_to_purch:(()=>{const res=parseInt(adIns.find(a=>a.action_type==='purchase'||a.action_type==='offsite_conversion.fb_pixel_purchase')?.value||0);const lk=parseInt(adIns.find(a=>a.action_type==='link_click')?.value||0)||parseInt(ins.clicks||0);return lk>0?+(res/lk*100).toFixed(2):0;})()
+        });
       });
     } catch(e) { af_toast('Network error','err'); console.error(e); }
   } else {
