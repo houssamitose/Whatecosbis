@@ -4896,7 +4896,15 @@ async function loadTasksFromServer(){
    HELPERS
 ═══════════════════════════════════════ */
 let cpage='overview', sf='all', af='all';
-const AV = { Houssam:{c:'avh',i:'HO'}, Nissrine:{c:'avn',i:'NI'}, Abdessamad:{c:'ava',i:'AB'} };
+const AV_CSS_COLORS=['avh','avn','ava','avb','avc'];
+const AV=(()=>{
+  try{
+    const m=JSON.parse(localStorage.getItem('ecos_team_members'))||[];
+    const obj={};
+    m.forEach((u,i)=>{ obj[u.name]={c:AV_CSS_COLORS[i%AV_CSS_COLORS.length],i:u.name.substring(0,2).toUpperCase()}; });
+    return obj;
+  }catch(_){ return {}; }
+})();
 const PRI = { high:{c:'tr',l:'High'}, medium:{c:'ta',l:'Mid'}, low:{c:'tb2',l:'Low'} };
 const ST = { new:{c:'tb2',l:'New'}, confirmed:{c:'ta',l:'Confirmed'}, delivered:{c:'tg',l:'Delivered'}, returned:{c:'tr',l:'Returned'} };
 
@@ -5127,8 +5135,10 @@ function openBallotModal(){
   document.getElementById('tm-title').textContent='Add Idea to Ballot Box';
   document.getElementById('tm-name').value='';
   document.getElementById('tm-desc').value='';
+  refreshMemberSelects();
   document.getElementById('tm-status').value='todo';
-  document.getElementById('tm-resp').value='Houssam';
+  const _defMember=(MEMBERS.length?MEMBERS[0]:'');
+  document.getElementById('tm-resp').value=_defMember;
   document.getElementById('tm-priority').value='medium';
   document.getElementById('tm-date').value='';
   document.getElementById('tm-audio-preview').innerHTML='';
@@ -6919,7 +6929,7 @@ let dragId=null, taskFilter='all', taskDateFilter='2026-05-12';
 let activeRecording={}; // {id, mediaRecorder, timer, seconds}
 
 const PRI_CYCLE={high:'medium',medium:'low',low:'high'};
-const MEMBERS=['Houssam','Nissrine','Abdessamad'];
+const MEMBERS=(()=>{ try{ return (JSON.parse(localStorage.getItem('ecos_team_members'))||[]).map(u=>u.name); }catch(_){ return []; } })();
 
 function renderKanban(f){
   if(f!==undefined) taskFilter=f;
@@ -9519,7 +9529,7 @@ function openSprintTaskModal(sprintId, date){
   document.getElementById('spt-date').value=date;
   document.getElementById('spt-sprint-name').textContent=sp.name+' · '+date;
   document.getElementById('spt-title').value='';
-  document.getElementById('spt-resp').value='Houssam';
+  refreshMemberSelects(); document.getElementById('spt-resp').value=(MEMBERS.length?MEMBERS[0]:'');
   document.getElementById('spt-status').value='todo';
   document.getElementById('modal-sprint-task').classList.add('open');
   setTimeout(()=>document.getElementById('spt-title').focus(),60);
