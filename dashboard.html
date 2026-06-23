@@ -847,6 +847,30 @@ tbody td{padding:10px 12px}
 #page-campaigns .drop-btn .caret{font-size:10px;transition:transform .15s;margin-left:2px}
 #page-campaigns .dropdown{position:absolute;top:calc(100% + 6px);left:0;background:var(--s1);border:1px solid var(--bd2);border-radius:12px;min-width:220px;z-index:500;box-shadow:var(--sh2);animation:mIn .15s ease;overflow:hidden}
 #page-campaigns .dropdown.right{left:auto;right:0}
+/* ── Calendar date-range picker ── */
+#page-campaigns .cal-presets{display:flex;flex-wrap:wrap;gap:5px;padding:12px 14px;border-bottom:1px solid var(--bd)}
+#page-campaigns .cal-preset{padding:5px 11px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--bd2);background:var(--s2);color:var(--m1);font-family:inherit;transition:all .15s}
+#page-campaigns .cal-preset:hover{color:var(--txt);border-color:var(--acc)}
+#page-campaigns .cal-preset.sel{background:var(--acc);color:#fff;border-color:var(--acc)}
+#page-campaigns .cal-body{display:flex;gap:0;padding:12px 14px}
+#page-campaigns .cal-month{flex:1;min-width:0}
+#page-campaigns .cal-month-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+#page-campaigns .cal-month-name{font-size:13px;font-weight:700;color:var(--txt)}
+#page-campaigns .cal-nav{background:none;border:1px solid var(--bd2);border-radius:6px;width:26px;height:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--m1);font-size:16px;font-family:inherit;transition:all .15s}
+#page-campaigns .cal-nav:hover{background:var(--s2);color:var(--txt)}
+#page-campaigns .cal-days-header{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:4px}
+#page-campaigns .cal-day-name{text-align:center;font-size:10.5px;font-weight:700;color:var(--m2);text-transform:uppercase;padding:4px 0}
+#page-campaigns .cal-days{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+#page-campaigns .cal-day{aspect-ratio:1;border:none;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;background:none;color:var(--txt);font-family:inherit;transition:all .12s;display:flex;align-items:center;justify-content:center}
+#page-campaigns .cal-day:hover:not(.empty){background:var(--s2)}
+#page-campaigns .cal-day.empty{pointer-events:none;visibility:hidden}
+#page-campaigns .cal-day.today{font-weight:800;color:var(--acc)}
+#page-campaigns .cal-day.range-start,#page-campaigns .cal-day.range-end{background:var(--acc);color:#fff;border-radius:6px}
+#page-campaigns .cal-day.in-range{background:rgba(91,80,240,.1);border-radius:0}
+#page-campaigns .cal-footer{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-top:1px solid var(--bd)}
+#page-campaigns .cal-selected-label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--m2);margin-bottom:2px}
+#page-campaigns .cal-selected-val{font-size:12.5px;font-weight:600;color:var(--txt)}
+/* ── end calendar ── */
 #page-campaigns .drop-header{padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--m2);border-bottom:1px solid var(--bd)}
 #page-campaigns .drop-item{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;font-size:13px;transition:background .1s;border:none;background:none;width:100%;text-align:left;font-family:inherit;color:var(--txt)}
 #page-campaigns .drop-item:hover{background:var(--s2)}
