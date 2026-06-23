@@ -10112,8 +10112,17 @@ const FB_PRESETS = {
 
 async function fetchAll() {
   if (!af_accounts.length) { renderTable(); return; }
-  document.getElementById('campTbl').innerHTML = '<div class="empty"><div class="spinner"></div><div class="empty-t" style="margin-top:12px">Loading af_campaigns...</div></div>';
-  document.getElementById('campUpd').textContent = 'Loading...';
+  /* Show cached data immediately while fetching */
+  try{
+    const _c=localStorage.getItem('af_campaigns_cache');
+    if(_c){ const _p=JSON.parse(_c); if(_p.data&&_p.data.length){ af_campaigns=_p.data; renderTable(); updateTabBadges(); updateDash();
+      const _mins=Math.round((Date.now()-_p.ts)/60000);
+      document.getElementById('campUpd').textContent='Cache ('+ (_mins<1?'<1':_mins)+'min ago) — refreshing…'; }}
+  }catch(_){}
+  if(!af_campaigns.length){
+    document.getElementById('campTbl').innerHTML = '<div class="empty"><div class="spinner"></div><div class="empty-t" style="margin-top:12px">Loading af_campaigns...</div></div>';
+  }
+  document.getElementById('campUpd').textContent = document.getElementById('campUpd').textContent.includes('Cache')?document.getElementById('campUpd').textContent:'Loading...';
   af_campaigns = [];
 
   const preset = FB_PRESETS[datePreset];
@@ -10187,6 +10196,8 @@ async function fetchAll() {
   }));
 
   af_campaigns = results.flat();
+  /* Cache campaigns for instant reload */
+  try{ localStorage.setItem('af_campaigns_cache', JSON.stringify({ts:Date.now(), data:af_campaigns})); }catch(_){}
   updateTabBadges();
   updateDash();
   renderTable();
