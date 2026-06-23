@@ -2386,6 +2386,10 @@ tr.clickable:hover{background:var(--s2)!important}
         <button class="btn btn-g" style="font-size:11px;padding:5px 9px" onclick="procAddBlock('note')"><i class="ti ti-info-circle"></i>Note</button>
         <button class="btn btn-g" style="font-size:11px;padding:5px 9px" onclick="procAddBlock('table')"><i class="ti ti-table"></i>Table</button>
         <button class="btn btn-g" style="font-size:11px;padding:5px 9px" onclick="procAddBlock('divider')"><i class="ti ti-minus"></i>---</button>
+        <div style="width:1px;height:20px;background:var(--bd);margin:0 4px"></div>
+        <button id="proc-undo-btn" class="btn btn-g" style="font-size:11px;padding:5px 9px;opacity:.35" disabled onclick="procUndo()" title="Rien à annuler">
+          <i class="ti ti-arrow-back-up"></i>Annuler
+        </button>
         <div style="flex:1"></div>
         <span id="proc-saved-label" style="font-size:10.5px;color:var(--m2)">Auto-saved</span>
         <button class="btn btn-g" style="font-size:11px;padding:5px 9px" onclick="procExport()"><i class="ti ti-download"></i>Export</button>
@@ -6450,10 +6454,35 @@ function procLoad(){
   procRenderBlocks();
 }
 
+let _procHistory = [];
+const PROC_UNDO_MAX = 40;
+
 function procSave(){
+  /* Push snapshot before saving */
+  _procHistory.push(JSON.stringify(_procDocs));
+  if(_procHistory.length > PROC_UNDO_MAX) _procHistory.shift();
+  procUpdateUndoBtn();
   localStorage.setItem(PROC_KEY, JSON.stringify(_procDocs));
   const lbl = document.getElementById('proc-saved-label');
   if(lbl){ lbl.textContent = 'Sauvegardé ✓ '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); setTimeout(()=>{ lbl.textContent='Auto-saved'; },2500); }
+}
+
+function procUndo(){
+  if(_procHistory.length === 0){ showToast('Rien à annuler'); return; }
+  _procDocs = JSON.parse(_procHistory.pop());
+  procUpdateUndoBtn();
+  localStorage.setItem(PROC_KEY, JSON.stringify(_procDocs));
+  procRenderDocList();
+  procRenderBlocks();
+  showToast('Annulé ↩');
+}
+
+function procUpdateUndoBtn(){
+  const btn = document.getElementById('proc-undo-btn');
+  if(!btn) return;
+  btn.disabled = _procHistory.length === 0;
+  btn.title = _procHistory.length > 0 ? `Annuler (${_procHistory.length} actions)` : 'Rien à annuler';
+  btn.style.opacity = _procHistory.length === 0 ? '.35' : '1';
 }
 
 function procGetActive(){
