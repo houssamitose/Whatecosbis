@@ -1785,6 +1785,30 @@ tr.clickable:hover{background:var(--s2)!important}
 .ang-not-launched{background:var(--s3);color:var(--m2)}
 .ang-not-launched:hover{background:var(--amber2);color:var(--amber)}
 </style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css">
+<style>
+/* Flatpickr theme overrides */
+.flatpickr-calendar{background:var(--bg,#fff)!important;border:1px solid var(--bd,#e5e7eb)!important;border-radius:14px!important;box-shadow:0 8px 32px rgba(0,0,0,.12)!important;font-family:inherit!important;padding:8px!important}
+.flatpickr-months{padding:4px 8px 0!important}
+.flatpickr-month{background:transparent!important;color:var(--txt,#111)!important;height:36px!important}
+.flatpickr-current-month{font-size:14px!important;font-weight:800!important;color:var(--txt,#111)!important;padding-top:6px!important}
+.flatpickr-current-month select,.flatpickr-current-month input.cur-year{color:var(--txt,#111)!important;font-weight:800!important}
+.flatpickr-prev-month,.flatpickr-next-month{color:var(--m2,#6b7280)!important;fill:var(--m2,#6b7280)!important;padding:6px 10px!important}
+.flatpickr-prev-month:hover,.flatpickr-next-month:hover{color:var(--acc,#5b50f0)!important;fill:var(--acc,#5b50f0)!important;background:var(--s2,#f3f4f6)!important;border-radius:8px!important}
+.flatpickr-weekdays{background:transparent!important;margin:6px 0 2px!important}
+span.flatpickr-weekday{color:var(--m2,#6b7280)!important;font-size:10.5px!important;font-weight:800!important;letter-spacing:.4px!important;text-transform:uppercase!important}
+.flatpickr-day{border-radius:8px!important;color:var(--txt,#111)!important;font-size:12.5px!important;font-weight:600!important;height:34px!important;line-height:34px!important;width:34px!important;max-width:34px!important}
+.flatpickr-day:hover{background:var(--s2,#f3f4f6)!important;border-color:transparent!important}
+.flatpickr-day.selected,.flatpickr-day.startRange,.flatpickr-day.endRange{background:var(--acc,#5b50f0)!important;border-color:var(--acc,#5b50f0)!important;color:#fff!important;font-weight:800!important;border-radius:8px!important}
+.flatpickr-day.today{border-color:var(--acc,#5b50f0)!important;font-weight:800!important;color:var(--acc,#5b50f0)!important}
+.flatpickr-day.today.selected{color:#fff!important}
+.flatpickr-day.inRange{background:rgba(91,80,240,.1)!important;border-color:transparent!important;box-shadow:none!important}
+.flatpickr-day.prevMonthDay,.flatpickr-day.nextMonthDay{color:var(--m2,#9ca3af)!important;opacity:.5}
+.flatpickr-day.disabled,.flatpickr-day.disabled:hover{color:var(--m2,#9ca3af)!important;opacity:.3}
+.dayContainer{gap:2px!important}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/l10n/fr.js"></script>
 </head>
 <body>
 <!-- ══ LOGIN OVERLAY ══ -->
@@ -14409,6 +14433,45 @@ async function sendAiMessage(){
 }
 
 /* ══ end missing functions ══ */
+
+/* ── Flatpickr init ── */
+function initFlatpickr(){
+  const fpOpts = {locale:'fr', dateFormat:'Y-m-d', disableMobile:true,
+    allowInput:true, position:'auto',
+  };
+  /* Overview range */
+  if(document.getElementById('ov-date-start')){
+    flatpickr('#ov-date-start', {...fpOpts, onChange:[function(d,s){ if(typeof applyOvRange==='function') applyOvRange(); }]});
+    flatpickr('#ov-date-end',   {...fpOpts, onChange:[function(d,s){ if(typeof applyOvRange==='function') applyOvRange(); }]});
+  }
+  /* Task date filter */
+  if(document.getElementById('tdate')){
+    flatpickr('#tdate', {...fpOpts, onChange:[function(d,s){ if(typeof filterTasksByDate==='function') filterTasksByDate(s); }]});
+  }
+  /* Task modal date */
+  if(document.getElementById('tm-date')){
+    flatpickr('#tm-date', {...fpOpts});
+  }
+  /* Sprint dates */
+  ['sp-start','sp-end'].forEach(id=>{
+    if(document.getElementById(id)) flatpickr('#'+id, {...fpOpts});
+  });
+  /* Access renewal dates — dynamic, init on mutation */
+  document.querySelectorAll('input[type="date"]').forEach(el=>{
+    if(!el._flatpickr) flatpickr(el, {...fpOpts});
+  });
+}
+document.addEventListener('DOMContentLoaded', function(){
+  setTimeout(initFlatpickr, 300);
+});
+/* Re-init after modals open */
+const _fpMutObs = new MutationObserver(()=>{
+  document.querySelectorAll('input[type="date"]:not(.flatpickr-input)').forEach(el=>{
+    if(!el._flatpickr) flatpickr(el, {locale:'fr',dateFormat:'Y-m-d',disableMobile:true,allowInput:true});
+  });
+});
+_fpMutObs.observe(document.body, {childList:true, subtree:true});
+
 
 </script>
 </body>
