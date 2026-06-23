@@ -1716,6 +1716,24 @@ tr.clickable:hover{background:var(--s2)!important}
 /* Process page placeholders */
 [data-placeholder].proc-empty:before{content:attr(data-placeholder);color:var(--m2);font-style:italic;pointer-events:none;position:absolute;left:0;top:0}
 [data-placeholder]{position:relative}
+
+/* Product tab count badges */
+.prod-tab-count{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:9px;font-size:10px;font-weight:800;padding:0 5px;margin-left:5px;background:var(--s3);color:var(--m2);transition:all .15s}
+.btn-tab.on .prod-tab-count{background:rgba(255,255,255,.22);color:#fff}
+/* Product card status accent */
+.prod-card[data-status=active]{border-left:3px solid var(--green)}
+.prod-card[data-status=test]{border-left:3px solid var(--blue)}
+.prod-card[data-status=inactive]{border-left:3px solid var(--amber)}
+.prod-card[data-status=off]{border-left:3px solid var(--bd2)}
+/* Stock badge */
+.prod-stock-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;display:inline-flex;align-items:center;gap:3px}
+.prod-stock-badge.ok{background:var(--green2);color:var(--green)}
+.prod-stock-badge.low{background:var(--amber2);color:var(--amber)}
+.prod-stock-badge.out{background:var(--red2);color:var(--red)}
+/* SS stats mini row */
+.prod-stat-mini{display:flex;gap:10px;margin-top:7px}
+.prod-stat-mini span{font-size:10.5px;font-weight:700;color:var(--m1);display:flex;align-items:center;gap:3px}
+.prod-stat-mini span i{font-size:11px}
 </style>
 </head>
 <body>
@@ -2221,10 +2239,10 @@ tr.clickable:hover{background:var(--s2)!important}
       <!-- Toolbar: filters + Add Product button -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px">
         <div style="display:flex;gap:6px" id="prod-tabs">
-          <button class="btn btn-tab on" data-prod-view="active" onclick="setProductView('active')"><i class="ti ti-box"></i>Active</button>
-          <button class="btn btn-tab" data-prod-view="test" onclick="setProductView('test')"><i class="ti ti-flask"></i>To Test</button>
-          <button class="btn btn-tab" data-prod-view="inactive" onclick="setProductView('inactive')"><i class="ti ti-pause"></i>Inactive</button>
-          <button class="btn btn-tab" data-prod-view="off" onclick="setProductView('off')"><i class="ti ti-circle-off"></i>Off</button>
+          <button class="btn btn-tab on" data-prod-view="active" onclick="setProductView('active')"><i class="ti ti-circle-check" style="color:var(--green)"></i>Actifs<span class="prod-tab-count" id="ptc-active" style="background:var(--green2);color:var(--green)">0</span></button>
+          <button class="btn btn-tab" data-prod-view="test" onclick="setProductView('test')"><i class="ti ti-flask" style="color:var(--blue)"></i>À tester<span class="prod-tab-count" id="ptc-test" style="background:var(--blue2);color:var(--blue)">0</span></button>
+          <button class="btn btn-tab" data-prod-view="inactive" onclick="setProductView('inactive')"><i class="ti ti-player-pause" style="color:var(--amber)"></i>Inactifs<span class="prod-tab-count" id="ptc-inactive" style="background:var(--amber2);color:var(--amber)">0</span></button>
+          <button class="btn btn-tab" data-prod-view="off" onclick="setProductView('off')"><i class="ti ti-circle-off"></i>Off<span class="prod-tab-count" id="ptc-off">0</span></button>
         </div>
         <button class="btn btn-p" onclick="openAddProductModal()"><i class="ti ti-plus"></i>Add Product</button>
       </div>
@@ -6109,7 +6127,7 @@ function goPage(n,el){
   if(n==='tasks'){ taskDateFilter=document.getElementById('tdate').value||''; renderKanban(); }
   if(n==='leads') renderLeads();
   if(n==='simulator'){ updateSimulator(); simRefreshScenarioDropdown(); }
-  if(n==='products') renderProducts();
+  if(n==='products'){ renderProducts(); try{prodUpdateTabCounts();}catch(_){} }
   if(n==='sprints') renderSprints();
   if(n==='downloader') renderDownloader();
   if(n==='transcribe'){ try{ renderTranscribePage(); }catch(e){} }
@@ -6158,11 +6176,19 @@ function openAddProductModal(){
 function setProductView(view){
   if (!['active','test','inactive','off'].includes(view)) view = 'active';
   if (typeof productMenuView !== 'undefined') productMenuView = view;
-  /* Toggle the .active style on the matching tab button */
   document.querySelectorAll('[data-prod-view]').forEach(btn => {
     btn.classList.toggle('on', btn.getAttribute('data-prod-view') === view);
   });
+  prodUpdateTabCounts();
   try { if (typeof renderProducts === 'function') renderProducts(); } catch(_){}
+}
+
+function prodUpdateTabCounts(){
+  if(typeof products === 'undefined') return;
+  ['active','test','inactive','off'].forEach(s=>{
+    const el = document.getElementById('ptc-'+s);
+    if(el) el.textContent = products.filter(p=>(p.status||'active')===s).length;
+  });
 }
 
 function closeAddProductModal(){
@@ -7691,26 +7717,41 @@ function renderProducts(){
     return;
   }
 
-  rail.innerHTML = filtered.map(p=>`
-    <div class="prod-card${activeProdId===p.id?' active':''}" id="pc-${p.id}" onclick="toggleProduct('${p.id}')">
+  rail.innerHTML = filtered.map(p=>{
+    const st = p.status||'active';
+    const stLabel = {active:'Actif',test:'À tester',inactive:'Inactif',off:'Off'}[st]||st;
+    const stColor = {active:'var(--green)',test:'var(--blue)',inactive:'var(--amber)',off:'var(--m2)'}[st];
+    const stock = p.stock||0;
+    const stockClass = stock===0?'out':stock<10?'low':'ok';
+    const stockLabel = stock===0?'Rupture':stock<10?`${stock} restants`:`${stock} en stock`;
+    const sku = (p.trackingCode||'').toLowerCase();
+    const ssOrders = sku && typeof ssLeads!=='undefined' ? ssLeads.filter(l=>(l.sku||'').toLowerCase()===sku||((l.productName||'').toLowerCase().includes(sku)&&sku.length>3)).length : 0;
+    const statsHtml = ssOrders>0 ? `<div class="prod-stat-mini"><span><i class="ti ti-shopping-cart"></i>${ssOrders} cmds</span></div>` : '';
+    return `<div class="prod-card${activeProdId===p.id?' active':''}" id="pc-${p.id}" data-status="${st}" onclick="toggleProduct('${p.id}')">
       <div class="prod-img">${p.emoji}</div>
       <div class="prod-info">
         <div class="prod-name">${xss(p.name)}</div>
-        <div class="prod-price">${p.price} MAD</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+          <span style="font-size:12px;font-weight:800;color:${stColor}">${p.price} MAD</span>
+          <span style="font-size:10px;padding:2px 7px;border-radius:6px;font-weight:700;background:${stColor}22;color:${stColor}">${stLabel}</span>
+        </div>
         <div class="prod-tags">
           <span class="tag tp" style="font-size:10px">${xss(p.category)}</span>
           <span class="tag tgr" style="font-size:10px">${p.avatars.length} avatars</span>
+          <span class="prod-stock-badge ${stockClass}">${stockLabel}</span>
         </div>
+        ${statsHtml}
         <div class="prod-status-row" data-perm="products:changeStatus" onclick="event.stopPropagation()">
-          <button class="prod-status-btn to-active"   title="Make Active"      ${p.status==='active'?'disabled':''}   onclick="changeProductStatus('${p.id}','active')"><i class="ti ti-circle-check"></i></button>
-          <button class="prod-status-btn to-inactive" title="Send to Inactive" ${p.status==='inactive'?'disabled':''} onclick="changeProductStatus('${p.id}','inactive')"><i class="ti ti-player-pause"></i></button>
-          <button class="prod-status-btn to-test"     title="Send to To Test"  ${p.status==='test'?'disabled':''}     onclick="changeProductStatus('${p.id}','test')"><i class="ti ti-flask"></i></button>
-          <button class="prod-status-btn to-off"      title="Move to Off"      ${p.status==='off'?'disabled':''}      onclick="changeProductStatus('${p.id}','off')"><i class="ti ti-circle-off"></i></button>
-          <button class="prod-status-btn delete" data-perm="products:removeForever" title="Remove definitively"                                      onclick="deleteProductForever('${p.id}')"><i class="ti ti-trash"></i></button>
+          <button class="prod-status-btn to-active"   title="Actif"      ${p.status==='active'?'disabled':''}   onclick="changeProductStatus('${p.id}','active')"><i class="ti ti-circle-check"></i></button>
+          <button class="prod-status-btn to-test"     title="À tester"  ${p.status==='test'?'disabled':''}     onclick="changeProductStatus('${p.id}','test')"><i class="ti ti-flask"></i></button>
+          <button class="prod-status-btn to-inactive" title="Inactif"    ${p.status==='inactive'?'disabled':''} onclick="changeProductStatus('${p.id}','inactive')"><i class="ti ti-player-pause"></i></button>
+          <button class="prod-status-btn to-off"      title="Off"        ${p.status==='off'?'disabled':''}      onclick="changeProductStatus('${p.id}','off')"><i class="ti ti-circle-off"></i></button>
+          <button class="prod-status-btn delete" data-perm="products:removeForever" title="Supprimer" onclick="deleteProductForever('${p.id}')"><i class="ti ti-trash"></i></button>
         </div>
       </div>
       <i class="ti ti-chevron-down prod-chevron"></i>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   renderProductPanel();
 }
 
@@ -8185,14 +8226,22 @@ function renderAvatarCard(pid, av){
         onblur="saveAvField(this,'${pid}','${av.id}','desc')"
         onclick="event.stopPropagation()"
       >${xss(av.desc||'')}</div>
-      <div class="av-field-lbl">Motivations / Objectifs</div>
+      <div class="av-field-lbl" style="color:var(--green)"><i class="ti ti-star" style="font-size:10px"></i> Motivations</div>
       <div class="av-field-val av-editable"
         contenteditable="true" spellcheck="false"
-        data-placeholder="Add motivations / objectifs…"
+        data-placeholder="Ce qui pousse à acheter…"
         title="Click to edit"
-        onblur="saveAvField(this,'${pid}','${av.id}','objectives')"
+        onblur="saveAvField(this,'${pid}','${av.id}','motivations')"
         onclick="event.stopPropagation()"
-      >${xss(av.objectives||'')}</div>
+      >${xss(av.motivations||av.objectives||'')}</div>
+      <div class="av-field-lbl" style="color:var(--red);margin-top:8px"><i class="ti ti-shield-x" style="font-size:10px"></i> Objections</div>
+      <div class="av-field-val av-editable"
+        contenteditable="true" spellcheck="false"
+        data-placeholder="Ce qui bloque l'achat…"
+        title="Click to edit"
+        onblur="saveAvField(this,'${pid}','${av.id}','objections')"
+        onclick="event.stopPropagation()"
+      >${xss(av.objections||'')}</div>
 
       <div class="av-divider" style="margin-top:10px"></div>
       <div class="av-field-lbl" style="margin-bottom:8px"><i class="ti ti-layout-grid" style="font-size:11px;color:var(--acc)"></i> Angles</div>
@@ -8229,7 +8278,17 @@ function renderAnglesView(p, av){
   const photoHTML = av.photo ? `<img src="${av.photo}">` : `<span style="color:#fff;font-size:16px;font-weight:800">${initials}</span>`;
 
   const anglesRows = av.angles.map((ang,ai)=>{
-    const typeMap = {video:{c:'vid',i:'ti-video',l:'Video'}, image:{c:'img',i:'ti-photo',l:'Image'}};
+    const typeMap = {
+  ugc:{c:'vid',i:'ti-video',l:'UGC'},
+  talking:{c:'vid',i:'ti-microphone',l:'Talking Head'},
+  demo:{c:'vid',i:'ti-device-tv',l:'Démo'},
+  testimonial:{c:'vid',i:'ti-quote',l:'Témoignage'},
+  before_after:{c:'vid',i:'ti-arrows-exchange',l:'Avant/Après'},
+  static:{c:'img',i:'ti-photo',l:'Static'},
+  carousel:{c:'img',i:'ti-stack-2',l:'Carousel'},
+  video:{c:'vid',i:'ti-video',l:'Video'},
+  image:{c:'img',i:'ti-photo',l:'Image'},
+};
     const rows = ang.rows.map(row=>{
       const tm = typeMap[row.type]||typeMap.video;
       return `<div class="ang-row" data-ang="${ang.id}" data-row="${row.id}">
@@ -8394,7 +8453,7 @@ function saveRowField(el, pid, avid){
   }
 }
 
-const TYPE_CYCLE={video:'image', image:'video'};
+const TYPE_CYCLE={ugc:'talking',talking:'demo',demo:'testimonial',testimonial:'before_after',before_after:'static',static:'carousel',carousel:'ugc',video:'ugc',image:'static'};
 const TYPE_LABELS={video:'Video', image:'Image'};
 
 function cycleRowType(pid, avid, angId, rowId){
@@ -8404,7 +8463,7 @@ function cycleRowType(pid, avid, angId, rowId){
   const row=ang.rows.find(r=>r.id===rowId); if(!row) return;
   row.type=TYPE_CYCLE[row.type]||'video';
   saveProducts();
-  const typeMap={video:{c:'vid',i:'ti-video',l:'Video'}, image:{c:'img',i:'ti-photo',l:'Image'}};
+  const typeMap={ugc:{c:'vid',i:'ti-video',l:'UGC'},talking:{c:'vid',i:'ti-microphone',l:'Talking Head'},demo:{c:'vid',i:'ti-device-tv',l:'Démo'},testimonial:{c:'vid',i:'ti-quote',l:'Témoignage'},before_after:{c:'vid',i:'ti-arrows-exchange',l:'Avant/Après'},static:{c:'img',i:'ti-photo',l:'Static'},carousel:{c:'img',i:'ti-stack-2',l:'Carousel'},video:{c:'vid',i:'ti-video',l:'Video'},image:{c:'img',i:'ti-photo',l:'Image'}};
   const tm=typeMap[row.type];
   const angBlock=document.querySelector(`.ang-row[data-row="${rowId}"]`);
   if(angBlock){
