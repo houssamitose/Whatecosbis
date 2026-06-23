@@ -13743,6 +13743,16 @@ document.addEventListener('visibilitychange', function(){ if(!document.hidden) s
 
 })();
 
+/* ── Bootstrap auth on every page load ── */
+(function bootstrapAuth(){
+  /* Ensure default users/perms exist */
+  if(typeof seedAuth === 'function') try{ seedAuth(); }catch(_){}
+  /* If already logged in (localStorage has ecos_current_user), skip the login overlay */
+  if(typeof applyAuthUI === 'function'){
+    try{ applyAuthUI(); }catch(_){}
+  }
+})();
+
 function aiQuickAsk(el){
   const q = el.dataset.q;
   document.getElementById('ai-input').value = q;
@@ -13754,6 +13764,7 @@ function clearAiChat(){
   document.getElementById('ai-empty').style.display = '';
   document.getElementById('ai-msgs').scrollTop = 9999999;
 }
+
 
 </script>
 </body>
