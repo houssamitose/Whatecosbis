@@ -13709,6 +13709,46 @@ Style:
 
 Current date: ${new Date().toISOString().slice(0,10)}.`;
 
+let _ssSilentTimer;
+function ssSilentSyncThrottled(){
+  clearTimeout(_ssSilentTimer);
+  _ssSilentTimer=setTimeout(function(){
+    if(typeof ssToken==='undefined'||!ssToken) return;
+    try{ if(typeof syncSpaceSeller==='function') syncSpaceSeller(); }catch(_){}
+  },1500);
+}
+setInterval(ssSilentSyncThrottled, 90000);
+window.addEventListener('focus', function(){ ssSilentSyncThrottled(); });
+document.addEventListener('visibilitychange', function(){ if(!document.hidden) ssSilentSyncThrottled(); });
+
+(function hookGoPageForSync(){
+  if(typeof window.goPage !== 'function') return;
+  var orig = window.goPage;
+  window.goPage = function(name, el){
+    var r = orig.apply(this, arguments);
+    if(['overview','leads','spaceseller','customers'].indexOf(name) !== -1){
+      ssSilentSyncThrottled();
+    }
+    return r;
+  };
+})();
+
+/* \u2500\u2500 Live date in topbar \u2500\u2500 */
+(function initTopbarDate(){
+  function _fmt(d){ return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }
+  function _tick(){
+    var el = document.getElementById('tb-date-live');
+    if(el) el.innerHTML = '<i class="ti ti-calendar" style="font-size:13px"></i>' + _fmt(new Date());
+  }
+  function _start(){
+    _tick();
+    var now = new Date(), midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1);
+    setTimeout(function loop(){ _tick(); setTimeout(loop, 86400000); }, midnight - now);
+  }
+  if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', _start); }
+  else { _start(); }
+})();
+
 function aiQuickAsk(el){
   const q = el.dataset.q;
   document.getElementById('ai-input').value = q;
