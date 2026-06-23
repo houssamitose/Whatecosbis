@@ -13747,9 +13747,11 @@ document.addEventListener('visibilitychange', function(){ if(!document.hidden) s
 (function bootstrapAuth(){
   /* Ensure default users/perms exist */
   if(typeof seedAuth === 'function') try{ seedAuth(); }catch(_){}
-  /* If already logged in (localStorage has ecos_current_user), skip the login overlay */
-  if(typeof applyAuthUI === 'function'){
-    try{ applyAuthUI(); }catch(_){}
+  /* If already logged in, hide the login overlay immediately */
+  var _bootUser = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
+  if(_bootUser){
+    if(typeof hideLogin === 'function') hideLogin();
+    if(typeof applyAuthUI === 'function') try{ applyAuthUI(); }catch(_){}
   }
 })();
 
