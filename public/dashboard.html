@@ -1712,6 +1712,10 @@ tr.clickable:hover{background:var(--s2)!important}
 .bc-creative-stats{display:flex;gap:11px;font-size:11px;color:var(--m1);font-weight:600;margin-top:4px}
 .bc-creative-stats strong{color:var(--txt);font-weight:800}
 
+
+/* Process page placeholders */
+[data-placeholder].proc-empty:before{content:attr(data-placeholder);color:var(--m2);font-style:italic;pointer-events:none;position:absolute;left:0;top:0}
+[data-placeholder]{position:relative}
 </style>
 </head>
 <body>
@@ -2298,22 +2302,39 @@ tr.clickable:hover{background:var(--s2)!important}
 
     <!-- ══ PROCESS ══ -->
     <div class="page" id="page-process">
-      <div class="fb mb14" style="margin-bottom:14px">
-        <div class="sec" style="margin:0"><i class="ti ti-notes"></i>Process &amp; SOPs</div>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-g" onclick="procAddBlock('heading')"><i class="ti ti-heading"></i>Heading</button>
-          <button class="btn btn-g" onclick="procAddBlock('text')"><i class="ti ti-text-size"></i>Text</button>
-          <button class="btn btn-g" onclick="procAddBlock('checklist')"><i class="ti ti-checkbox"></i>Checklist</button>
-          <button class="btn btn-g" onclick="procAddBlock('table')"><i class="ti ti-table"></i>Table</button>
-          <button class="btn btn-g" onclick="procAddBlock('divider')"><i class="ti ti-minus"></i>Divider</button>
-          <button class="btn btn-p" onclick="procSave()"><i class="ti ti-device-floppy"></i>Save</button>
-          <button class="btn btn-g" onclick="procExport()"><i class="ti ti-download"></i>Export</button>
-        </div>
+  <div style="display:flex;gap:0;height:calc(100vh - 120px);min-height:500px;border:1px solid var(--bd);border-radius:14px;overflow:hidden;background:var(--bg)">
+
+    <!-- LEFT: doc list -->
+    <div style="width:220px;flex-shrink:0;border-right:1px solid var(--bd);display:flex;flex-direction:column;background:var(--s1)">
+      <div style="padding:14px 12px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--bd)">
+        <span style="font-size:12px;font-weight:800;letter-spacing:.4px;color:var(--m1);text-transform:uppercase">Documents</span>
+        <button class="tbn" title="New SOP" onclick="procNewDoc()" style="width:26px;height:26px;border-radius:7px;background:var(--acc);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700">+</button>
       </div>
-      <div id="proc-editor" style="display:flex;flex-direction:column;gap:8px;min-height:400px"></div>
-      <div style="margin-top:10px;font-size:11px;color:var(--m2);text-align:right" id="proc-saved-label">Auto-saved to browser</div>
+      <div id="proc-doc-list" style="flex:1;overflow-y:auto;padding:8px 6px;display:flex;flex-direction:column;gap:3px"></div>
     </div>
 
+    <!-- RIGHT: editor -->
+    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+      <!-- toolbar -->
+      <div style="padding:10px 14px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:var(--s1)">
+        <span id="proc-doc-title-display" style="font-size:13px;font-weight:800;color:var(--txt);margin-right:8px;cursor:pointer;padding:4px 8px;border-radius:7px;transition:background .12s" onclick="procRenameDoc()" title="Click to rename"></span>
+        <div style="width:1px;height:20px;background:var(--bd);margin:0 4px"></div>
+        <button class="btn btn-g" style="font-size:11px;padding:5px 9px" onclick="procAddBlock('heading')"><i class="ti ti-heading"></i>Titre</button>
+        <button class="btn btn-g" style="font-size:11px;padding:5px 9px" onclick="procAddBlock('step')"><i class="ti ti-list-numbers"></i>Étape</button>
+        <button class="btn btn-g" style="font-size:11px;padding:5px 9px" onclick="procAddBlock('text')"><i class="ti ti-align-left"></i>Texte</button>
+        <button class="btn btn-g" style="font-size:11px;padding:5px 9px" onclick="procAddBlock('checklist')"><i class="ti ti-checkbox"></i>Checklist</button>
+        <button class="btn btn-g" style="font-size:11px;padding:5px 9px" onclick="procAddBlock('note')"><i class="ti ti-info-circle"></i>Note</button>
+        <button class="btn btn-g" style="font-size:11px;padding:5px 9px" onclick="procAddBlock('table')"><i class="ti ti-table"></i>Table</button>
+        <button class="btn btn-g" style="font-size:11px;padding:5px 9px" onclick="procAddBlock('divider')"><i class="ti ti-minus"></i>---</button>
+        <div style="flex:1"></div>
+        <span id="proc-saved-label" style="font-size:10.5px;color:var(--m2)">Auto-saved</span>
+        <button class="btn btn-g" style="font-size:11px;padding:5px 9px" onclick="procExport()"><i class="ti ti-download"></i>Export</button>
+      </div>
+      <!-- blocks area -->
+      <div id="proc-editor" style="flex:1;overflow-y:auto;padding:20px 28px;display:flex;flex-direction:column;gap:6px"></div>
+    </div>
+  </div>
+</div>
     <!-- ══ AD DOWNLOADER ══ -->
     <div class="page" id="page-downloader">
       <div class="sec mb14"><i class="ti ti-download"></i>Ad Video Downloader</div>
@@ -6325,145 +6346,335 @@ function renderTopCreatives(){
 }
 
 /* ─── Process editor (localStorage-backed block editor) ─── */
-const PROC_KEY = 'ecos_process_blocks';
-let _procBlocks = [];
+const PROC_KEY = 'ecos_process_docs';
+let _procDocs = [];   // [{id, title, blocks:[]}]
+let _procActiveDoc = null;  // id of open doc
 
+function _puid(){ return Math.random().toString(36).slice(2,9); }
+
+/* ── Load / Save ── */
 function procLoad(){
-  try{ _procBlocks = JSON.parse(localStorage.getItem(PROC_KEY)||'[]'); }catch(_){ _procBlocks=[]; }
-  if(!_procBlocks.length){
-    _procBlocks=[
-      {id:_uid(),type:'heading',content:'📋 Processus Opérationnels'},
-      {id:_uid(),type:'text',content:'Décris ici tes SOPs, workflows et procédures internes.'},
+  try{ _procDocs = JSON.parse(localStorage.getItem(PROC_KEY)||'[]'); }catch(_){ _procDocs=[]; }
+  if(!_procDocs.length){
+    _procDocs = [
+      {id:_puid(), title:'📦 Processus Commandes', blocks:[
+        {id:_puid(),type:'heading',content:'Processus Traitement Commandes'},
+        {id:_puid(),type:'step',title:'Vérification commande',content:'Vérifier que la commande est complète (adresse, téléphone, produit).'},
+        {id:_puid(),type:'step',title:'Confirmation client',content:'Appeler ou envoyer un message WhatsApp pour confirmer la livraison.'},
+        {id:_puid(),type:'step',title:'Expédition',content:'Créer le bon de livraison et confier au transporteur.'},
+        {id:_puid(),type:'checklist',items:['Adresse complète','Numéro de téléphone valide','Produit en stock'],checked:[]},
+      ]},
+      {id:_puid(), title:'🎯 SOP Marketing', blocks:[
+        {id:_puid(),type:'heading',content:'SOP Lancement Campagne'},
+        {id:_puid(),type:'note',content:'Suivre ce processus à chaque nouveau lancement de pub Facebook.'},
+        {id:_puid(),type:'step',title:'Définir l\'avatar',content:'Choisir l\'avatar cible dans la page Produits.'},
+        {id:_puid(),type:'step',title:'Écrire l\'angle',content:'Rédiger le hook et le script dans la table des angles.'},
+        {id:_puid(),type:'step',title:'Créer le créatif',content:'Produire la vidéo ou l\'image selon le format sélectionné.'},
+        {id:_puid(),type:'step',title:'Lancer & analyser',content:'Mettre en ligne et suivre les KPIs dans Campaigns.'},
+      ]},
     ];
+    procSave();
   }
-  procRender();
+  if(!_procActiveDoc || !_procDocs.find(d=>d.id===_procActiveDoc)){
+    _procActiveDoc = _procDocs[0]?.id||null;
+  }
+  procRenderDocList();
+  procRenderBlocks();
 }
-function _uid(){ return Math.random().toString(36).slice(2,9); }
+
 function procSave(){
-  localStorage.setItem(PROC_KEY, JSON.stringify(_procBlocks));
-  const lbl=document.getElementById('proc-saved-label');
-  if(lbl){ lbl.textContent='Sauvegardé ✓ '+new Date().toLocaleTimeString(); setTimeout(()=>{lbl.textContent='Auto-saved to browser';},2500); }
+  localStorage.setItem(PROC_KEY, JSON.stringify(_procDocs));
+  const lbl = document.getElementById('proc-saved-label');
+  if(lbl){ lbl.textContent = 'Sauvegardé ✓ '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); setTimeout(()=>{ lbl.textContent='Auto-saved'; },2500); }
 }
-function procRender(){
-  const ed=document.getElementById('proc-editor'); if(!ed) return;
+
+function procGetActive(){
+  return _procDocs.find(d=>d.id===_procActiveDoc)||null;
+}
+
+/* ── Doc list sidebar ── */
+function procRenderDocList(){
+  const list = document.getElementById('proc-doc-list'); if(!list) return;
+  list.innerHTML = _procDocs.map(d=>`
+    <div onclick="procOpenDoc('${d.id}')" style="display:flex;align-items:center;gap:7px;padding:8px 10px;border-radius:9px;cursor:pointer;transition:background .12s;background:${d.id===_procActiveDoc?'var(--acc-a)':' transparent'};border:1px solid ${d.id===_procActiveDoc?'var(--acc)':'transparent'}">
+      <span style="flex:1;font-size:12.5px;font-weight:${d.id===_procActiveDoc?'700':'600'};color:${d.id===_procActiveDoc?'var(--acc)':'var(--txt)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${xss(d.title)}</span>
+      <button class="tbn" title="Supprimer" onclick="event.stopPropagation();procDeleteDoc('${d.id}')" style="opacity:.4;transition:opacity .12s;font-size:12px;flex-shrink:0" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.4"><i class="ti ti-trash"></i></button>
+    </div>`).join('');
+}
+
+function procOpenDoc(id){
+  _procActiveDoc = id;
+  procRenderDocList();
+  procRenderBlocks();
+}
+
+function procNewDoc(){
+  const d = {id:_puid(), title:'Nouveau SOP', blocks:[]};
+  _procDocs.push(d);
+  _procActiveDoc = d.id;
+  procSave();
+  procRenderDocList();
+  procRenderBlocks();
+  /* focus title immediately */
+  setTimeout(()=>procRenameDoc(),80);
+}
+
+function procDeleteDoc(id){
+  if(_procDocs.length<=1){ showToast('Minimum 1 document'); return; }
+  if(!confirm('Supprimer ce document ?')) return;
+  _procDocs = _procDocs.filter(d=>d.id!==id);
+  if(_procActiveDoc===id) _procActiveDoc = _procDocs[0]?.id||null;
+  procSave(); procRenderDocList(); procRenderBlocks();
+}
+
+function procRenameDoc(){
+  const doc = procGetActive(); if(!doc) return;
+  const el = document.getElementById('proc-doc-title-display'); if(!el) return;
+  const inp = document.createElement('input');
+  inp.value = doc.title;
+  inp.style.cssText = 'font-size:13px;font-weight:800;color:var(--txt);border:none;border-bottom:2px solid var(--acc);background:transparent;outline:none;width:180px;padding:2px 4px';
+  el.replaceWith(inp);
+  inp.focus(); inp.select();
+  const finish=()=>{
+    doc.title = inp.value.trim()||doc.title;
+    procSave(); procRenderDocList();
+    const newEl = document.getElementById('proc-doc-title-display')||document.createElement('span');
+    newEl.id='proc-doc-title-display';
+    newEl.textContent=doc.title;
+    inp.replaceWith(newEl);
+  };
+  inp.addEventListener('blur',finish);
+  inp.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key==='Escape') inp.blur(); });
+}
+
+/* ── Block rendering ── */
+function procRenderBlocks(){
+  const doc = procGetActive();
+  const ed = document.getElementById('proc-editor'); if(!ed) return;
+  const titleEl = document.getElementById('proc-doc-title-display');
+  if(titleEl) titleEl.textContent = doc?.title||'';
+  if(!doc){ ed.innerHTML='<div style="text-align:center;padding:60px 20px;color:var(--m2)"><i class="ti ti-notes" style="font-size:32px;display:block;margin-bottom:10px;opacity:.3"></i>Sélectionne ou crée un document</div>'; return; }
   ed.innerHTML='';
-  _procBlocks.forEach((b,i)=>{ ed.appendChild(procBlockEl(b,i)); });
+  const steps = doc.blocks.filter(b=>b.type==='step');
+  let stepIdx = 0;
+  doc.blocks.forEach((b,i)=>{
+    if(b.type==='step') stepIdx++;
+    ed.appendChild(procBlockEl(b, i, doc, b.type==='step'?stepIdx:0));
+  });
+  if(!doc.blocks.length){
+    const ph = document.createElement('div');
+    ph.style.cssText='text-align:center;padding:50px 20px;color:var(--m2)';
+    ph.innerHTML='<i class="ti ti-square-plus" style="font-size:28px;display:block;margin-bottom:8px;opacity:.3"></i><span style="font-size:12.5px">Ajoute ton premier bloc avec les boutons ci-dessus</span>';
+    ed.appendChild(ph);
+  }
 }
-function procBlockEl(b,i){
-  const wrap=document.createElement('div');
-  wrap.className='proc-block'; wrap.dataset.id=b.id;
-  wrap.style.cssText='display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--bd)';
-  /* drag handle + controls */
-  const ctrl=document.createElement('div');
-  ctrl.style.cssText='display:flex;flex-direction:column;gap:4px;padding-top:4px;flex-shrink:0';
-  ctrl.innerHTML=`
-    <button onclick="procMoveUp(${i})" title="Move up" style="background:none;border:none;cursor:pointer;color:var(--m2);font-size:12px;padding:1px 4px" ${i===0?'disabled':''}>↑</button>
-    <button onclick="procMoveDown(${i})" title="Move down" style="background:none;border:none;cursor:pointer;color:var(--m2);font-size:12px;padding:1px 4px" ${i===_procBlocks.length-1?'disabled':''}>↓</button>
-    <button onclick="procDeleteBlock('${b.id}')" title="Delete" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:12px;padding:1px 4px">×</button>`;
+
+function procBlockEl(b, i, doc, stepNum){
+  const wrap = document.createElement('div');
+  wrap.dataset.id = b.id;
+  wrap.style.cssText = 'display:flex;gap:10px;align-items:flex-start;group:1';
+
+  /* controls */
+  const ctrl = document.createElement('div');
+  ctrl.style.cssText = 'display:flex;flex-direction:column;gap:3px;padding-top:6px;flex-shrink:0;opacity:0;transition:opacity .15s';
+  ctrl.innerHTML = `
+    <button title="Monter" style="background:none;border:none;cursor:pointer;color:var(--m2);font-size:12px;padding:2px 5px;border-radius:5px;transition:background .12s" onmouseover="this.style.background='var(--s3)'" onmouseout="this.style.background=''" onclick="procMoveUp(${i})" ${i===0?'disabled':''}>↑</button>
+    <button title="Descendre" style="background:none;border:none;cursor:pointer;color:var(--m2);font-size:12px;padding:2px 5px;border-radius:5px;transition:background .12s" onmouseover="this.style.background='var(--s3)'" onmouseout="this.style.background=''" onclick="procMoveDown(${i})" ${i===doc.blocks.length-1?'disabled':''}>↓</button>
+    <button title="Supprimer" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:13px;padding:2px 5px;border-radius:5px;transition:background .12s" onmouseover="this.style.background='var(--s3)'" onmouseout="this.style.background=''" onclick="procDeleteBlock('${b.id}')">×</button>`;
   wrap.appendChild(ctrl);
-  const body=document.createElement('div'); body.style.cssText='flex:1;min-width:0';
+  wrap.addEventListener('mouseenter',()=>ctrl.style.opacity='1');
+  wrap.addEventListener('mouseleave',()=>ctrl.style.opacity='0');
+
+  const body = document.createElement('div');
+  body.style.cssText = 'flex:1;min-width:0';
+
   if(b.type==='heading'){
-    const el=document.createElement('div');
-    el.contentEditable='true';
-    el.style.cssText='font-size:18px;font-weight:800;color:var(--txt);outline:none;min-height:28px;padding:4px 0';
-    el.textContent=b.content||'';
+    const el = document.createElement('div');
+    el.contentEditable = 'true';
+    el.style.cssText = 'font-size:22px;font-weight:900;color:var(--txt);outline:none;padding:6px 0 2px;border-bottom:2px solid var(--bd);margin-bottom:4px;letter-spacing:-.5px';
+    el.textContent = b.content||'';
+    el.dataset.placeholder = 'Titre du document…';
     el.addEventListener('input',()=>{ b.content=el.textContent; procSave(); });
+    el.addEventListener('focus',()=>el.style.borderBottomColor='var(--acc)');
+    el.addEventListener('blur',()=>el.style.borderBottomColor='var(--bd)');
     body.appendChild(el);
+
+  } else if(b.type==='step'){
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:12px;align-items:flex-start;padding:12px 14px;background:var(--s2);border:1px solid var(--bd);border-radius:10px;border-left:3px solid var(--acc)';
+    const num = document.createElement('div');
+    num.style.cssText = 'width:26px;height:26px;border-radius:50%;background:var(--acc);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px';
+    num.textContent = stepNum;
+    const content = document.createElement('div');
+    content.style.cssText = 'flex:1;min-width:0';
+    const titleEl = document.createElement('div');
+    titleEl.contentEditable = 'true';
+    titleEl.style.cssText = 'font-size:13.5px;font-weight:800;color:var(--txt);outline:none;margin-bottom:4px';
+    titleEl.textContent = b.title||'';
+    titleEl.dataset.placeholder = 'Titre de l\'étape…';
+    titleEl.addEventListener('input',()=>{ b.title=titleEl.textContent; procSave(); });
+    const descEl = document.createElement('div');
+    descEl.contentEditable = 'true';
+    descEl.style.cssText = 'font-size:12.5px;color:var(--m1);outline:none;line-height:1.6;white-space:pre-wrap';
+    descEl.textContent = b.content||'';
+    descEl.dataset.placeholder = 'Description de l\'étape…';
+    descEl.addEventListener('input',()=>{ b.content=descEl.textContent; procSave(); });
+    content.appendChild(titleEl); content.appendChild(descEl);
+    row.appendChild(num); row.appendChild(content);
+    body.appendChild(row);
+
   } else if(b.type==='text'){
-    const el=document.createElement('div');
-    el.contentEditable='true';
-    el.style.cssText='font-size:13px;color:var(--txt);outline:none;min-height:20px;padding:4px 0;line-height:1.7;white-space:pre-wrap';
-    el.textContent=b.content||'';
+    const el = document.createElement('div');
+    el.contentEditable = 'true';
+    el.style.cssText = 'font-size:13px;color:var(--txt);outline:none;padding:8px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;line-height:1.8;white-space:pre-wrap;min-height:40px';
+    el.textContent = b.content||'';
+    el.dataset.placeholder = 'Texte libre…';
     el.addEventListener('input',()=>{ b.content=el.innerText; procSave(); });
+    el.addEventListener('focus',()=>el.style.borderColor='var(--acc)');
+    el.addEventListener('blur',()=>el.style.borderColor='var(--bd)');
     body.appendChild(el);
+
+  } else if(b.type==='note'){
+    const el = document.createElement('div');
+    el.contentEditable = 'true';
+    el.style.cssText = 'font-size:12.5px;color:var(--amber);outline:none;padding:10px 14px;background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.3);border-radius:8px;border-left:3px solid var(--amber);line-height:1.7;white-space:pre-wrap;min-height:36px';
+    el.innerHTML = (b.content||'') ? '' : '';
+    el.textContent = b.content||'';
+    el.dataset.placeholder = 'Note ou avertissement…';
+    el.addEventListener('input',()=>{ b.content=el.innerText; procSave(); });
+    const lbl = document.createElement('div');
+    lbl.style.cssText = 'font-size:10px;font-weight:800;color:var(--amber);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px;opacity:.8';
+    lbl.innerHTML = '<i class="ti ti-info-circle"></i> Note';
+    body.appendChild(lbl); body.appendChild(el);
+
   } else if(b.type==='checklist'){
-    const items=(b.items||['']);
-    const listEl=document.createElement('div');
-    listEl.style.cssText='display:flex;flex-direction:column;gap:6px';
+    const items = b.items||[''];
+    const listEl = document.createElement('div');
+    listEl.style.cssText = 'display:flex;flex-direction:column;gap:6px;padding:10px 14px;background:var(--s2);border:1px solid var(--bd);border-radius:8px';
     items.forEach((txt,ci)=>{
-      const row=document.createElement('div');
-      row.style.cssText='display:flex;gap:6px;align-items:center';
-      const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=!!b.checked?.[ci];
-      cb.addEventListener('change',()=>{if(!b.checked)b.checked=[];b.checked[ci]=cb.checked;procSave();});
-      const inp=document.createElement('input');
-      inp.type='text'; inp.className='finput'; inp.value=txt;
-      inp.style.cssText='flex:1;font-size:12.5px;height:28px;padding:4px 8px;text-decoration:'+(b.checked?.[ci]?'line-through':'none');
-      inp.addEventListener('input',()=>{b.items[ci]=inp.value;procSave();});
-      const del=document.createElement('button');
-      del.innerHTML='×'; del.style.cssText='background:none;border:none;cursor:pointer;color:var(--m2);font-size:14px';
-      del.onclick=()=>{ b.items.splice(ci,1); if(b.checked) b.checked.splice(ci,1); procRender(); procSave(); };
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:8px;align-items:center';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.checked = !!b.checked?.[ci];
+      cb.style.cssText = 'width:16px;height:16px;cursor:pointer;accent-color:var(--acc);flex-shrink:0';
+      cb.addEventListener('change',()=>{ if(!b.checked)b.checked=[]; b.checked[ci]=cb.checked; procSave(); });
+      const inp = document.createElement('div');
+      inp.contentEditable = 'true';
+      inp.style.cssText = 'flex:1;font-size:12.5px;color:var(--txt);outline:none;text-decoration:'+(b.checked?.[ci]?'line-through':'none')+';opacity:'+(b.checked?.[ci]?'.5':'1');
+      inp.textContent = txt;
+      inp.dataset.placeholder = 'Élément…';
+      inp.addEventListener('input',()=>{ b.items[ci]=inp.textContent; procSave(); });
+      const del = document.createElement('button');
+      del.innerHTML = '<i class="ti ti-x" style="font-size:10px"></i>';
+      del.style.cssText = 'background:none;border:none;cursor:pointer;color:var(--m2);opacity:.5;transition:opacity .12s;padding:2px 4px';
+      del.onmouseover = ()=>del.style.opacity='1';
+      del.onmouseout = ()=>del.style.opacity='.5';
+      del.onclick = ()=>{ b.items.splice(ci,1); if(b.checked) b.checked.splice(ci,1); procRenderBlocks(); procSave(); };
       row.appendChild(cb); row.appendChild(inp); row.appendChild(del);
       listEl.appendChild(row);
     });
-    const addBtn=document.createElement('button');
-    addBtn.className='btn btn-g'; addBtn.style.cssText='font-size:11px;margin-top:4px;align-self:flex-start';
-    addBtn.innerHTML='<i class="ti ti-plus"></i>Add item';
-    addBtn.onclick=()=>{ if(!b.items)b.items=[]; b.items.push(''); procRender(); procSave(); };
+    const addBtn = document.createElement('button');
+    addBtn.className = 'btn btn-g';
+    addBtn.style.cssText = 'font-size:11px;padding:4px 9px;margin-top:4px;align-self:flex-start';
+    addBtn.innerHTML = '<i class="ti ti-plus"></i> Ajouter';
+    addBtn.onclick = ()=>{ if(!b.items)b.items=[]; b.items.push(''); procRenderBlocks(); procSave(); };
     listEl.appendChild(addBtn);
     body.appendChild(listEl);
+
   } else if(b.type==='table'){
-    const rows=b.rows||[['Column 1','Column 2','Column 3'],['','','']];
-    b.rows=rows;
-    const tbl=document.createElement('table');
-    tbl.style.cssText='width:100%;border-collapse:collapse;font-size:12.5px';
+    const rows = b.rows||[['Colonne 1','Colonne 2','Colonne 3'],['','','']];
+    b.rows = rows;
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'overflow-x:auto;border:1px solid var(--bd);border-radius:8px';
+    const tbl = document.createElement('table');
+    tbl.style.cssText = 'width:100%;border-collapse:collapse;font-size:12.5px';
     rows.forEach((row,ri)=>{
-      const tr=document.createElement('tr');
+      const tr = document.createElement('tr');
       row.forEach((cell,ci)=>{
-        const td=document.createElement(ri===0?'th':'td');
-        td.style.cssText='border:1px solid var(--bd);padding:5px 8px;'+(ri===0?'background:var(--s2);font-weight:700':'');
-        td.contentEditable='true'; td.style.outline='none';
-        td.textContent=cell;
+        const td = document.createElement(ri===0?'th':'td');
+        td.contentEditable = 'true';
+        td.style.cssText = 'border:1px solid var(--bd);padding:7px 10px;outline:none;text-align:left;'+(ri===0?'background:var(--s3);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:var(--m1)':'background:var(--bg)');
+        td.textContent = cell;
         td.addEventListener('input',()=>{ b.rows[ri][ci]=td.textContent; procSave(); });
         tr.appendChild(td);
       });
       tbl.appendChild(tr);
     });
-    /* add row/col buttons */
-    const btns=document.createElement('div');
-    btns.style.cssText='display:flex;gap:6px;margin-top:6px';
-    const addRow=document.createElement('button'); addRow.className='btn btn-g';
-    addRow.style.fontSize='11px'; addRow.innerHTML='<i class="ti ti-plus"></i>Row';
-    addRow.onclick=()=>{ b.rows.push(new Array(b.rows[0].length).fill('')); procRender(); procSave(); };
-    const addCol=document.createElement('button'); addCol.className='btn btn-g';
-    addCol.style.fontSize='11px'; addCol.innerHTML='<i class="ti ti-plus"></i>Col';
-    addCol.onclick=()=>{ b.rows.forEach(r=>r.push('')); procRender(); procSave(); };
+    wrapper.appendChild(tbl);
+    const btns = document.createElement('div');
+    btns.style.cssText = 'display:flex;gap:6px;margin-top:6px';
+    const addRow = document.createElement('button'); addRow.className='btn btn-g';
+    addRow.style.fontSize='11px'; addRow.innerHTML='<i class="ti ti-plus"></i>Ligne';
+    addRow.onclick=()=>{ b.rows.push(new Array(b.rows[0].length).fill('')); procRenderBlocks(); procSave(); };
+    const addCol = document.createElement('button'); addCol.className='btn btn-g';
+    addCol.style.fontSize='11px'; addCol.innerHTML='<i class="ti ti-plus"></i>Colonne';
+    addCol.onclick=()=>{ b.rows.forEach(r=>r.push('')); procRenderBlocks(); procSave(); };
     btns.appendChild(addRow); btns.appendChild(addCol);
-    body.appendChild(tbl); body.appendChild(btns);
+    body.appendChild(wrapper); body.appendChild(btns);
+
   } else if(b.type==='divider'){
-    const hr=document.createElement('hr');
-    hr.style.cssText='border:none;border-top:2px dashed var(--bd2);margin:8px 0';
+    const hr = document.createElement('hr');
+    hr.style.cssText = 'border:none;border-top:2px dashed var(--bd2);margin:12px 0';
     body.appendChild(hr);
   }
+
+  /* placeholder support */
+  body.querySelectorAll('[data-placeholder]').forEach(el=>{
+    el.style.position='relative';
+    if(!el.textContent.trim()) el.classList.add('proc-empty');
+    el.addEventListener('focus',()=>el.classList.remove('proc-empty'));
+    el.addEventListener('blur',()=>{ if(!el.textContent.trim()) el.classList.add('proc-empty'); });
+  });
+
   wrap.appendChild(body);
   return wrap;
 }
+
 function procAddBlock(type){
-  const b={id:_uid(),type};
+  const doc = procGetActive(); if(!doc) return;
+  const b = {id:_puid(),type};
   if(type==='checklist') b.items=[''];
   if(type==='table') b.rows=[['Étape','Description','Responsable'],['','','']];
-  _procBlocks.push(b);
-  procRender(); procSave();
-  /* scroll to bottom */
-  const ed=document.getElementById('proc-editor');
-  if(ed){ const last=ed.lastElementChild; if(last) last.scrollIntoView({behavior:'smooth',block:'nearest'}); }
+  if(type==='step') b.title=''; 
+  doc.blocks.push(b);
+  procSave(); procRenderBlocks();
+  const ed = document.getElementById('proc-editor');
+  if(ed) ed.lastElementChild?.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
+
 function procDeleteBlock(id){
-  _procBlocks=_procBlocks.filter(b=>b.id!==id);
-  procRender(); procSave();
+  const doc = procGetActive(); if(!doc) return;
+  doc.blocks = doc.blocks.filter(b=>b.id!==id);
+  procSave(); procRenderBlocks();
 }
-function procMoveUp(i){ if(i<=0) return; [_procBlocks[i-1],_procBlocks[i]]=[_procBlocks[i],_procBlocks[i-1]]; procRender(); procSave(); }
-function procMoveDown(i){ if(i>=_procBlocks.length-1) return; [_procBlocks[i],_procBlocks[i+1]]=[_procBlocks[i+1],_procBlocks[i]]; procRender(); procSave(); }
+
+function procMoveUp(i){
+  const doc = procGetActive(); if(!doc||i<=0) return;
+  [doc.blocks[i-1],doc.blocks[i]]=[doc.blocks[i],doc.blocks[i-1]];
+  procSave(); procRenderBlocks();
+}
+
+function procMoveDown(i){
+  const doc = procGetActive(); if(!doc||i>=doc.blocks.length-1) return;
+  [doc.blocks[i],doc.blocks[i+1]]=[doc.blocks[i+1],doc.blocks[i]];
+  procSave(); procRenderBlocks();
+}
+
 function procExport(){
-  let out='';
-  _procBlocks.forEach(b=>{
-    if(b.type==='heading') out+='\n# '+b.content+'\n';
-    else if(b.type==='text') out+=b.content+'\n';
-    else if(b.type==='checklist') out+=(b.items||[]).map((t,i)=>(b.checked?.[i]?'[x] ':'[ ] ')+t).join('\n')+'\n';
-    else if(b.type==='table') out+=(b.rows||[]).map(r=>r.join(' | ')).join('\n')+'\n';
-    else if(b.type==='divider') out+='---\n';
+  const doc = procGetActive(); if(!doc) return;
+  let out = '# '+doc.title+'\n\n';
+  doc.blocks.forEach((b,i)=>{
+    const stepNum = doc.blocks.slice(0,i+1).filter(x=>x.type==='step').length;
+    if(b.type==='heading') out += '## '+b.content+'\n\n';
+    else if(b.type==='step') out += stepNum+'. **'+(b.title||'Étape')+'**\n   '+(b.content||'')+'\n\n';
+    else if(b.type==='text') out += (b.content||'')+'\n\n';
+    else if(b.type==='note') out += '> ⚠️ '+(b.content||'')+'\n\n';
+    else if(b.type==='checklist') out += (b.items||[]).map((t,ci)=>(b.checked?.[ci]?'- [x] ':'- [ ] ')+t).join('\n')+'\n\n';
+    else if(b.type==='table') out += (b.rows||[]).map(r=>r.join(' | ')).join('\n')+'\n\n';
+    else if(b.type==='divider') out += '---\n\n';
   });
   const blob=new Blob([out.trim()],{type:'text/plain'});
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='process.md'; a.click(); URL.revokeObjectURL(a.href);
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=doc.title.replace(/[^a-z0-9]/gi,'_')+'.md'; a.click(); URL.revokeObjectURL(a.href);
 }
 
 /* — Compute per-product perf — pulls Ad Spend from campaigns matching the product's tracking code — */
