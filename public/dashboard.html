@@ -11215,8 +11215,10 @@ function saveAccounts() {
   try {
     localStorage.setItem('adflow-af_accounts', JSON.stringify(af_accounts.map(a => ({
       id:a.id, name:a.name, fbName:a.fbName, token:a.token,
-      currency:a.currency, connectedAt:a.connectedAt||Date.now()
-      // intentionally NOT saving status — always revalidate on load
+      currency:a.currency, connectedAt:a.connectedAt||Date.now(),
+      lastSync:Date.now(),
+      /* Save last-known live status so UI shows connected on reload */
+      savedStatus: a.status==='live'?'live':'unknown'
     }))));
   } catch(e) {}
 }
@@ -11226,11 +11228,12 @@ function loadAccounts() {
     if (!saved) return;
     JSON.parse(saved).forEach(a => {
       if (!af_accounts.find(x => x.id === a.id))
-        af_accounts.push({...a, status:'loading', af_campaigns:0, active:0, spend:0});
+        af_accounts.push({...a, status:a.savedStatus||'loading', af_campaigns:0, active:0, spend:0});
     });
     if (af_accounts.length) { updateBadges(); rebuildAccDrop(); renderAccCards(); fetchAll(); }
   } catch(e) {
-    localStorage.removeItem('adflow-af_accounts');
+    console.warn('loadAccounts parse error — keeping storage intact', e);
+    /* Do NOT remove adflow-af_accounts on parse error — user would lose their accounts */
   }
   /* Restore ads cache so Top Creatives works immediately */
   try{
