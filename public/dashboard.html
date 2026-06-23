@@ -2325,34 +2325,34 @@ tr.clickable:hover{background:var(--s2)!important}
         <span id="dl-server-msg">Vérification du serveur…</span>
       </div>
 
-      <!-- Input -->
-      <div class="card dl-card mb14">
-        <div class="dl-step-title" style="margin-bottom:10px"><i class="ti ti-link" style="color:var(--acc)"></i> Paste any ad URL</div>
-        <div style="display:flex;gap:8px">
-          <input type="url" class="finput" id="dl-url-input"
-            placeholder="https://www.facebook.com/... or https://tiktok.com/... or any page with a video"
-            style="flex:1;min-width:260px"
-            onkeydown="if(event.key==='Enter') dlExtract()">
-          <button class="btn btn-p" id="dl-extract-btn" onclick="dlExtract()">
-            <i class="ti ti-search"></i>Find Videos
-          </button>
+      <!-- Step 1: How-to guide -->
+      <div class="card dl-card mb14" style="background:linear-gradient(135deg,var(--s2) 0%,var(--s1) 100%);border-color:var(--acc);border-width:1.5px">
+        <div class="dl-step-title" style="margin-bottom:10px"><i class="ti ti-bulb" style="color:var(--amber)"></i> Comment récupérer une vidéo Facebook Ads</div>
+        <div style="font-size:12.5px;color:var(--txt);line-height:1.8">
+          <span style="display:inline-flex;align-items:center;gap:4px;background:var(--acc);color:#fff;border-radius:20px;padding:1px 9px;font-size:11px;font-weight:700;margin-right:6px">1</span>
+          Ouvre la <strong>Facebook Ad Library</strong> — trouve la pub que tu veux.<br>
+          <span style="display:inline-flex;align-items:center;gap:4px;background:var(--acc);color:#fff;border-radius:20px;padding:1px 9px;font-size:11px;font-weight:700;margin-right:6px;margin-top:4px">2</span>
+          Fais <kbd style="background:var(--s1);border:1px solid var(--bd);padding:1px 6px;border-radius:4px;font-size:11px">Ctrl+U</kbd> (ou <kbd style="background:var(--s1);border:1px solid var(--bd);padding:1px 6px;border-radius:4px;font-size:11px">Cmd+Opt+U</kbd> sur Mac) pour voir le code source.<br>
+          <span style="display:inline-flex;align-items:center;gap:4px;background:var(--acc);color:#fff;border-radius:20px;padding:1px 9px;font-size:11px;font-weight:700;margin-right:6px;margin-top:4px">3</span>
+          <kbd style="background:var(--s1);border:1px solid var(--bd);padding:1px 6px;border-radius:4px;font-size:11px">Ctrl+A</kbd> puis <kbd style="background:var(--s1);border:1px solid var(--bd);padding:1px 6px;border-radius:4px;font-size:11px">Ctrl+C</kbd> — colle tout ci-dessous — clique <strong>Extraire</strong>.<br>
+          <span style="display:inline-flex;align-items:center;gap:4px;background:var(--green);color:#fff;border-radius:20px;padding:1px 9px;font-size:11px;font-weight:700;margin-right:6px;margin-top:4px">4</span>
+          Clique <strong>Download</strong> sur le résultat — le fichier va dans ton dossier Téléchargements.
         </div>
-        <div id="dl-error" style="display:none;margin-top:10px;font-size:12px;color:var(--red);font-weight:600"></div>
+        <div style="margin-top:10px;font-size:11px;color:var(--amber);font-weight:600">
+          <i class="ti ti-info-circle"></i> Le scraping direct par URL est bloqué par Facebook côté serveur — la méthode "source HTML" est la seule qui fonctionne à 100%.
+        </div>
       </div>
 
-      <!-- Mode 2: Paste page source HTML -->
+      <!-- Step 2: Paste HTML -->
       <div class="card dl-card mb14">
-        <div class="dl-step-title" style="margin-bottom:6px"><i class="ti ti-code" style="color:var(--green)"></i> Or paste the page source HTML <span style="font-size:10.5px;color:var(--m1);font-weight:500;margin-left:6px">— bypasses every block</span></div>
-        <div style="font-size:11.5px;color:var(--m1);margin-bottom:10px;line-height:1.5">
-          In your browser: open the Facebook ad → <strong>Ctrl+U</strong> (Cmd+Opt+U on Mac) to view source → <strong>Ctrl+A</strong> → <strong>Ctrl+C</strong> → paste here.
-        </div>
+        <div class="dl-step-title" style="margin-bottom:8px"><i class="ti ti-code" style="color:var(--green)"></i> Colle le code source HTML ici</div>
         <textarea id="dl-html-input"
-          placeholder="Paste the entire HTML source of the Facebook Ad Library page here…"
-          style="width:100%;min-height:120px;padding:10px 12px;background:var(--s2);border:1px solid var(--bd2);border-radius:8px;color:var(--txt);font-family:monospace;font-size:11px;line-height:1.4;outline:none;resize:vertical"></textarea>
+          placeholder="Colle ici tout le HTML (Ctrl+U → Ctrl+A → Ctrl+C depuis la page Facebook)…"
+          style="width:100%;min-height:140px;padding:10px 12px;background:var(--s2);border:1px solid var(--bd2);border-radius:8px;color:var(--txt);font-family:monospace;font-size:11px;line-height:1.4;outline:none;resize:vertical"></textarea>
         <div style="display:flex;gap:8px;margin-top:10px;justify-content:space-between;align-items:center">
-          <div style="font-size:11px;color:var(--m1)" id="dl-html-counter">0 characters pasted</div>
-          <button class="btn btn-p" id="dl-html-btn" onclick="dlExtractFromHtml()">
-            <i class="ti ti-wand"></i>Extract from HTML
+          <div style="font-size:11px;color:var(--m1)" id="dl-html-counter">0 caractères collés</div>
+          <button class="btn btn-p" id="dl-html-btn" onclick="dlExtractFromHtml()" style="font-size:13px;padding:8px 18px">
+            <i class="ti ti-wand"></i>Extraire les vidéos
           </button>
         </div>
         <div id="dl-html-error" style="display:none;margin-top:10px;font-size:12px;color:var(--red);font-weight:600"></div>
@@ -2360,20 +2360,13 @@ tr.clickable:hover{background:var(--s2)!important}
 
       <!-- Results -->
       <div id="dl-results" style="display:none">
-        <div class="sec mb14"><i class="ti ti-video"></i>Found Videos <span id="dl-count" class="nbadge" style="background:var(--acc);color:#fff;border-radius:20px;padding:1px 8px;font-size:10px"></span></div>
+        <div class="sec mb14"><i class="ti ti-video"></i>Vidéos trouvées <span id="dl-count" class="nbadge" style="background:var(--acc);color:#fff;border-radius:20px;padding:1px 8px;font-size:10px"></span></div>
         <div id="dl-results-list" style="display:flex;flex-direction:column;gap:10px"></div>
       </div>
 
-      <!-- Tips card -->
-      <div class="card dl-card" style="background:var(--s2);border-color:var(--bd)">
-        <div class="dl-step-title" style="font-size:13px;margin-bottom:8px"><i class="ti ti-bulb" style="color:var(--amber)"></i> How to use</div>
-        <div style="font-size:12px;color:var(--m1);line-height:1.6">
-          1. Open the <strong>Facebook Ad Library</strong> and find the ad you want.<br>
-          2. Click the ad to open its detail page — copy the URL from the address bar.<br>
-          3. Paste it above and click <strong>Find Videos</strong>. The cloud extractor will pull every video URL embedded in the page.<br>
-          4. Click <strong>Download</strong> on the result you want — the file lands in your Downloads folder.
-        </div>
-      </div>
+      <!-- Hidden legacy inputs kept for JS compatibility -->
+      <input type="hidden" id="dl-url-input">
+      <div id="dl-error" style="display:none"></div>
     </div>
 
     <!-- ══ TRANSCRIBE ══ -->
@@ -11589,7 +11582,7 @@ function dlExtractFromHtml(){
 document.addEventListener('input', function(e){
   if(e.target?.id === 'dl-html-input'){
     const counter = document.getElementById('dl-html-counter');
-    if(counter) counter.textContent = `${e.target.value.length.toLocaleString()} characters pasted`;
+    if(counter) counter.textContent = `${e.target.value.length.toLocaleString()} caractères collés`;
   }
 });
 
@@ -13747,6 +13740,7 @@ document.addEventListener('visibilitychange', function(){ if(!document.hidden) s
   }
   if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', _start); }
   else { _start(); }
+
 })();
 
 function aiQuickAsk(el){
