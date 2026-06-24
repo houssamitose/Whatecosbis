@@ -1772,20 +1772,19 @@ tr.clickable:hover{background:var(--s2)!important}
 .ang-block-name:focus{background:var(--s1);box-shadow:0 0 0 2px var(--acc)}
 .ang-block-name:empty:before{content:'Nom de l'angle…';color:var(--m2);font-style:italic;pointer-events:none}
 /* Angle table header */
-.ang-tbl-wrap{overflow-x:auto;border-radius:0 0 12px 12px}
-.ang-tbl-head{display:grid;grid-template-columns:86px 1fr 1fr 1fr 130px 112px 36px;background:var(--s2);border-bottom:2px solid var(--bd);min-width:700px}
-.ang-tbl-hcell{padding:7px 10px;font-size:10px;font-weight:800;color:var(--m1);text-transform:uppercase;letter-spacing:.4px;border-right:1px solid var(--bd);display:flex;align-items:center}
-.ang-tbl-hcell:last-child{border-right:none}
-/* Angle table row */
-.ang-tbl-row{display:grid;grid-template-columns:86px 1fr 1fr 1fr 130px 112px 36px;border-bottom:1px solid var(--bd);min-width:700px;min-height:40px}
-.ang-tbl-row:last-child{border-bottom:none}
-.ang-tbl-row:hover{background:rgba(91,80,240,.03)}
-.ang-tbl-cell{border-right:1px solid var(--bd);display:flex;align-items:center;gap:4px;overflow:hidden}
-.ang-tbl-cell:last-child{border-right:none;justify-content:center;padding:0}
-/* Cell input — same height for all cells, true table look */
-.ang-cell-input{font-size:12.5px;color:var(--txt);background:transparent;border:none;outline:none;width:100%;height:100%;padding:8px 10px;font-family:inherit;line-height:1.4;cursor:text}
+/* True HTML table for angles */
+.ang-table{width:100%;border-collapse:collapse;table-layout:fixed;min-width:660px}
+.ang-thead-row{background:var(--s2)}
+.ang-th{padding:7px 10px;font-size:10px;font-weight:800;color:var(--m1);text-transform:uppercase;letter-spacing:.4px;border-right:1px solid var(--bd);border-bottom:2px solid var(--bd);white-space:nowrap}
+.ang-th:last-child{border-right:none}
+.ang-td{border-right:1px solid var(--bd);border-bottom:1px solid var(--bd);padding:6px 10px;vertical-align:middle}
+.ang-td:last-child{border-right:none}
+.ang-tr:last-child .ang-td{border-bottom:none}
+.ang-tr:hover{background:rgba(91,80,240,.03)}
+/* Cell input */
+.ang-cell-input{font-size:12.5px;color:var(--txt);background:transparent;border:none;outline:none;width:100%;padding:4px 6px;font-family:inherit;line-height:1.4;cursor:text;display:block}
 .ang-cell-input::placeholder{color:var(--m2);font-style:italic}
-.ang-cell-input:focus{background:rgba(91,80,240,.04)}
+.ang-cell-input:focus{background:rgba(91,80,240,.05);border-radius:4px}
 /* Status button 4 states */
 .ang-status-btn{display:inline-flex;align-items:center;gap:4px;padding:5px 8px;border-radius:8px;border:none;cursor:pointer;font-size:11px;font-weight:700;font-family:inherit;transition:all .15s;white-space:nowrap;width:100%;justify-content:center}
 .ang-st-idea{background:var(--s3);color:var(--m1)}.ang-st-idea:hover{filter:brightness(.92)}
@@ -8056,59 +8055,57 @@ function renderFlatAnglesView(p){
         const st = row.status||(row.launched?'live':'idea');
         const stCfg = {idea:{cls:'ang-st-idea',icon:'ti-bulb',label:'Idée'},creation:{cls:'ang-st-creation',icon:'ti-pencil',label:'Création'},test:{cls:'ang-st-test',icon:'ti-flask',label:'En test'},live:{cls:'ang-st-live',icon:'ti-rocket',label:'Live'}};
         const sc = stCfg[st]||stCfg.idea;
-        const inspoLink = inspo ? `<a href="${xss(inspo)}" target="_blank" style="color:var(--acc);flex-shrink:0;display:flex;align-items:center" title="Ouvrir"><i class="ti ti-external-link" style="font-size:12px"></i></a>` : '';
-        return `<div class="ang-tbl-row" data-ang="${ang.id}" data-row="${row.id}">
-          <div class="ang-tbl-cell" style="align-items:center;justify-content:center">
-            <span class="ang-fmt-badge ${fm.cls}" title="Cliquer pour changer"
+        const inspoLink = inspo ? `<a href="${xss(inspo)}" target="_blank" style="color:var(--acc);flex-shrink:0;margin-left:4px" title="Ouvrir"><i class="ti ti-external-link" style="font-size:12px"></i></a>` : '';
+        return `<tr class="ang-tr" data-ang="${ang.id}" data-row="${row.id}">
+          <td class="ang-td" style="text-align:center;width:86px">
+            <span class="ang-fmt-badge ${fm.cls}" title="Cliquer pour changer" style="cursor:pointer"
               onclick="cycleRowFmt('${p.id}','${av.id}','${ang.id}','${row.id}')">
               <i class="ti ${fm.icon}"></i>${fm.label}
             </span>
-          </div>
-          <div class="ang-tbl-cell" style="align-items:center;padding:0 0 0 8px">
+          </td>
+          <td class="ang-td" style="padding:0">
             <input class="ang-cell-input" type="text" placeholder="Hook / accroche…"
               value="${xss(hook)}"
               onblur="saveRowFmtField(this,'${p.id}','${av.id}','${ang.id}','${row.id}','hook')"
-              onkeydown="if(event.key==='Enter'){this.blur()}"
-            >
-          </div>
-          <div class="ang-tbl-cell" style="align-items:center;padding:0 0 0 8px">
+              onkeydown="if(event.key==='Enter'){this.blur()}">
+          </td>
+          <td class="ang-td" style="padding:0">
             <input class="ang-cell-input" type="text" placeholder="Concept visuel…"
               value="${xss(concept)}"
               onblur="saveRowFmtField(this,'${p.id}','${av.id}','${ang.id}','${row.id}','concept')"
-              onkeydown="if(event.key==='Enter'){this.blur()}"
-            >
-          </div>
-          <div class="ang-tbl-cell" style="align-items:center;padding:0 0 0 8px">
+              onkeydown="if(event.key==='Enter'){this.blur()}">
+          </td>
+          <td class="ang-td" style="padding:0">
             <input class="ang-cell-input" type="text" placeholder="Script / voix off…"
               value="${xss(script)}"
               onblur="saveRowFmtField(this,'${p.id}','${av.id}','${ang.id}','${row.id}','script')"
-              onkeydown="if(event.key==='Enter'){this.blur()}"
-            >
-          </div>
-          <div class="ang-tbl-cell" style="align-items:center;gap:5px;padding:0 6px">
+              onkeydown="if(event.key==='Enter'){this.blur()}">
+          </td>
+          <td class="ang-td" style="padding:0 4px">
             <input class="ang-cell-input" type="url" placeholder="https://…"
               value="${xss(inspo)}"
               onblur="saveRowFmtField(this,'${p.id}','${av.id}','${ang.id}','${row.id}','inspiration')"
               onkeydown="if(event.key==='Enter'){this.blur()}"
-              style="min-width:0"
-            >${inspoLink}
-          </div>
-          <div class="ang-tbl-cell" style="align-items:center;padding:6px 8px">
+              style="width:calc(100% - 20px)">${inspoLink}
+          </td>
+          <td class="ang-td" style="padding:5px 8px;width:112px">
             <button class="ang-status-btn ${sc.cls}" title="Cliquer pour changer"
               onclick="cycleRowStatus('${p.id}','${av.id}','${ang.id}','${row.id}',this)">
               <i class="ti ${sc.icon}"></i>${sc.label}
             </button>
-          </div>
-          <div class="ang-tbl-cell">
-            <button class="tbn" title="Supprimer ligne" style="color:var(--m2);font-size:13px;padding:4px 6px;border-radius:6px;transition:all .12s"
+          </td>
+          <td class="ang-td" style="text-align:center;width:36px;padding:0">
+            <button class="tbn" title="Supprimer" style="color:var(--m2);font-size:13px;padding:4px 6px;border-radius:6px;transition:all .12s"
               onmouseover="this.style.color='var(--red)';this.style.background='var(--red2)'"
               onmouseout="this.style.color='var(--m2)';this.style.background=''"
               onclick="deleteScriptRow('${p.id}','${av.id}','${ang.id}','${row.id}')">
               <i class="ti ti-trash" style="font-size:12px"></i>
             </button>
-          </div>
-        </div>`;
+          </td>
+        </tr>`;
       }).join('');
+
+      const emptyRow = `<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--m2);font-size:12px">Aucune ligne — clique <strong>+ Ligne</strong> pour commencer</td></tr>`;
 
       allAngBlocks.push(`<div class="ang-block">
         <div class="ang-block-head">
@@ -8129,17 +8126,24 @@ function renderFlatAnglesView(p){
             <i class="ti ti-trash"></i>
           </button>
         </div>
-        <div class="ang-tbl-wrap">
-        <div class="ang-tbl-head">
-          <div class="ang-tbl-hcell" style="justify-content:center">Format</div>
-          <div class="ang-tbl-hcell">Hook</div>
-          <div class="ang-tbl-hcell">Concept</div>
-          <div class="ang-tbl-hcell">Script</div>
-          <div class="ang-tbl-hcell">Inspiration</div>
-          <div class="ang-tbl-hcell" style="justify-content:center">Statut</div>
-          <div class="ang-tbl-hcell"></div>
-        </div>
-        ${rows||`<div style="padding:18px 14px;color:var(--m2);font-size:12px;text-align:center;min-width:640px">Aucune ligne — clique <strong>+ Ligne</strong> pour commencer</div>`}
+        <div style="overflow-x:auto">
+        <table class="ang-table">
+          <colgroup>
+            <col style="width:86px"><col><col><col><col style="width:130px"><col style="width:112px"><col style="width:36px">
+          </colgroup>
+          <thead>
+            <tr class="ang-thead-row">
+              <th class="ang-th" style="text-align:center">Format</th>
+              <th class="ang-th">Hook</th>
+              <th class="ang-th">Concept</th>
+              <th class="ang-th">Script</th>
+              <th class="ang-th">Inspiration</th>
+              <th class="ang-th" style="text-align:center">Statut</th>
+              <th class="ang-th"></th>
+            </tr>
+          </thead>
+          <tbody>${rows||emptyRow}</tbody>
+        </table>
         </div>
       </div>`);
     });
