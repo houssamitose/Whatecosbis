@@ -1773,11 +1773,11 @@ tr.clickable:hover{background:var(--s2)!important}
 .ang-block-name:empty:before{content:'Nom de l'angle…';color:var(--m2);font-style:italic;pointer-events:none}
 /* Angle table header */
 .ang-tbl-wrap{overflow-x:auto;border-radius:0 0 12px 12px}
-.ang-tbl-head{display:grid;grid-template-columns:86px 1fr 1fr 130px 112px 36px;background:var(--s2);border-bottom:2px solid var(--bd);min-width:600px}
+.ang-tbl-head{display:grid;grid-template-columns:86px 1fr 1fr 1fr 130px 112px 36px;background:var(--s2);border-bottom:2px solid var(--bd);min-width:700px}
 .ang-tbl-hcell{padding:7px 10px;font-size:10px;font-weight:800;color:var(--m1);text-transform:uppercase;letter-spacing:.4px;border-right:1px solid var(--bd);display:flex;align-items:center}
 .ang-tbl-hcell:last-child{border-right:none}
 /* Angle table row */
-.ang-tbl-row{display:grid;grid-template-columns:86px 1fr 1fr 130px 112px 36px;border-bottom:1px solid var(--bd);min-width:600px;min-height:40px}
+.ang-tbl-row{display:grid;grid-template-columns:86px 1fr 1fr 1fr 130px 112px 36px;border-bottom:1px solid var(--bd);min-width:700px;min-height:40px}
 .ang-tbl-row:last-child{border-bottom:none}
 .ang-tbl-row:hover{background:rgba(91,80,240,.03)}
 .ang-tbl-cell{border-right:1px solid var(--bd);display:flex;align-items:center;gap:4px;overflow:hidden}
@@ -8056,8 +8056,9 @@ function renderFlatAnglesView(p){
         const fmt = row.format||(row.type==='image'?'image':row.type==='carousel'?'carousel':'video');
         const fm = fmtMap[fmt]||fmtMap.video;
         const inspo = row.inspiration||row.link||'';
-        const concept = row.concept||row.script||'';
+        const concept = row.concept||'';
         const hook = row.hook||'';
+        const script = row.script||'';
         const st = row.status||(row.launched?'live':'idea');
         const stCfg = {idea:{cls:'ang-st-idea',icon:'ti-bulb',label:'Idée'},creation:{cls:'ang-st-creation',icon:'ti-pencil',label:'Création'},test:{cls:'ang-st-test',icon:'ti-flask',label:'En test'},live:{cls:'ang-st-live',icon:'ti-rocket',label:'Live'}};
         const sc = stCfg[st]||stCfg.idea;
@@ -8080,6 +8081,13 @@ function renderFlatAnglesView(p){
             <input class="ang-cell-input" type="text" placeholder="Concept visuel…"
               value="${xss(concept)}"
               onblur="saveRowFmtField(this,'${p.id}','${av.id}','${ang.id}','${row.id}','concept')"
+              onkeydown="if(event.key==='Enter'){this.blur()}"
+            >
+          </div>
+          <div class="ang-tbl-cell" style="align-items:center;padding:0 0 0 8px">
+            <input class="ang-cell-input" type="text" placeholder="Script / voix off…"
+              value="${xss(script)}"
+              onblur="saveRowFmtField(this,'${p.id}','${av.id}','${ang.id}','${row.id}','script')"
               onkeydown="if(event.key==='Enter'){this.blur()}"
             >
           </div>
@@ -8132,6 +8140,7 @@ function renderFlatAnglesView(p){
           <div class="ang-tbl-hcell" style="justify-content:center">Format</div>
           <div class="ang-tbl-hcell">Hook</div>
           <div class="ang-tbl-hcell">Concept</div>
+          <div class="ang-tbl-hcell">Script</div>
           <div class="ang-tbl-hcell">Inspiration</div>
           <div class="ang-tbl-hcell" style="justify-content:center">Statut</div>
           <div class="ang-tbl-hcell"></div>
