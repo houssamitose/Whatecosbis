@@ -1874,7 +1874,7 @@ span.flatpickr-weekday{display:inline-block!important;width:calc(100%/7)!importa
   </div>
   <nav class="sb-nav">
     <div class="nav-sec">Menu</div>
-    <div class="nav-item active" onclick="goPage('overview',this)">
+    <div class="nav-item" style="display:none" onclick="goPage('overview',this)">
       <div class="nav-icon"><i class="ti ti-layout-dashboard"></i></div>Overview
     </div>
     <div class="nav-group" id="tasks-nav-group">
@@ -1960,7 +1960,7 @@ span.flatpickr-weekday{display:inline-block!important;width:calc(100%/7)!importa
         <div class="nav-subitem" onclick="openToolByName('Script Extractor Tool',this)"><span class="nav-dot"></span>Script Extractor</div>
       </div>
     </div>
-    <div class="nav-item" onclick="goPage('team-results',this)">
+    <div class="nav-item" style="display:none" onclick="goPage('team-results',this)">
       <div class="nav-icon"><i class="ti ti-trophy"></i></div>Team Results
     </div>
     <div class="nav-group" id="systems-nav-group">
@@ -2040,7 +2040,7 @@ span.flatpickr-weekday{display:inline-block!important;width:calc(100%/7)!importa
   <div class="content">
 
     <!-- ══ OVERVIEW ══ -->
-    <div class="page active" id="page-overview">
+    <div class="page" id="page-overview">
       <div class="ov-date-range">
         <i class="ti ti-calendar"></i>
         <label>From</label>
@@ -4338,6 +4338,7 @@ function showLogin(){
 function hideLogin(){
   document.getElementById('login-overlay').classList.add('hidden');
   document.getElementById('app-root').style.display='flex';
+  setTimeout(()=>{try{const el=document.querySelector('[onclick*="goTaskSub(\'daily\'"]');if(el)goTaskSub('daily',el);}catch(_){}},80);
 }
 
 /* ── Apply auth UI: hide nav items, show user info ── */
@@ -8022,19 +8023,188 @@ function renderProductPanel(){
   if(!activeProdId){ panel.classList.remove('open'); return; }
   const p = products.find(x=>x.id===activeProdId);
   if(!p){ panel.classList.remove('open'); return; }
-
-  if(activeAvId){
-    const av = p.avatars.find(a=>a.id===activeAvId);
-    panel.innerHTML = renderAnglesView(p, av);
-  } else {
-    panel.innerHTML = renderAvatarsView(p);
-  }
-  // Force reflow then open
+  panel.innerHTML = renderFlatAnglesView(p);
   panel.classList.remove('open');
   requestAnimationFrame(()=>requestAnimationFrame(()=>panel.classList.add('open')));
+}
 
-  // Attach inline edit listeners after render
-  if(activeAvId) attachAnglesListeners();
+function renderFlatAnglesView(p){
+  const m = productMetrics(p);
+  const fmtMap = {
+    video:{cls:'ang-fmt-video',icon:'ti-video',label:'Vidéo'},
+    image:{cls:'ang-fmt-image',icon:'ti-photo',label:'Image'},
+    carousel:{cls:'ang-fmt-carousel',icon:'ti-stack-2',label:'Carousel'},
+  };
+  const allAngBlocks = [];
+  let gIdx = 0;
+  (p.avatars||[]).forEach(av => {
+    const col = avColor(av.name);
+    (av.angles||[]).forEach(ang => {
+      gIdx++;
+      const rows = (ang.rows||[]).map(row => {
+        const fmt = row.format||(row.type==='image'?'image':row.type==='carousel'?'carousel':'video');
+        const fm = fmtMap[fmt]||fmtMap.video;
+        const inspo = row.inspiration||row.link||'';
+        const isImg = /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(inspo);
+        const inspoPreviewHTML = inspo
+          ? (isImg
+              ? `<a href="${xss(inspo)}" target="_blank" class="ang-inspo-preview"><img src="${xss(inspo)}" onerror="this.style.display='none'"><span style="overflow:hidden;text-overflow:ellipsis;flex:1">${xss(inspo)}</span></a>`
+              : `<a href="${xss(inspo)}" target="_blank" class="ang-inspo-preview"><i class="ti ti-external-link" style="font-size:11px;flex-shrink:0"></i><span style="overflow:hidden;text-overflow:ellipsis;flex:1">${xss(inspo)}</span></a>`)
+          : '';
+        const concept = row.concept||row.script||'';
+        return `<div class="ang-tbl-row" data-ang="${ang.id}" data-row="${row.id}">
+          <div class="ang-tbl-cell" style="align-items:center">
+            <span class="ang-fmt-badge ${fm.cls}" title="Cliquer pour changer"
+              onclick="cycleRowFmt('${p.id}','${av.id}','${ang.id}','${row.id}')">
+              <i class="ti ${fm.icon}"></i>${fm.label}
+              <i class="ti ti-refresh" style="font-size:9px;opacity:.5;margin-left:2px"></i>
+            </span>
+          </div>
+          <div class="ang-tbl-cell">
+            <div class="ang-inspo-wrap">
+              <input class="ang-inspo-input" type="url" placeholder="Lien inspiration (Facebook, TikTok…)"
+                value="${xss(inspo)}"
+                onblur="saveRowFmtField(this,'${p.id}','${av.id}','${ang.id}','${row.id}','inspiration')"
+                onkeydown="if(event.key==='Enter'){this.blur()}"
+              >${inspoPreviewHTML}
+            </div>
+          </div>
+          <div class="ang-tbl-cell">
+            <div class="ang-concept-edit" contenteditable="true" spellcheck="false"
+              data-placeholder="Décris le concept visuel de ce format…"
+              onblur="saveRowFmtField(this,'${p.id}','${av.id}','${ang.id}','${row.id}','concept')"
+            >${xss(concept)}</div>
+          </div>
+          <div class="ang-tbl-cell" style="align-items:center;justify-content:center">
+            <button class="ang-launch-btn ${row.launched?'ang-launched':'ang-not-launched'}"
+              onclick="toggleAngLaunched('${p.id}','${av.id}','${ang.id}','${row.id}',this)">
+              <i class="ti ti-${row.launched?'rocket':'rocket-off'}"></i>
+              ${row.launched?'Live':'À lancer'}
+            </button>
+          </div>
+          <div class="ang-tbl-cell">
+            <button class="tbn" title="Supprimer ligne" style="color:var(--m2);font-size:13px;padding:4px 6px;border-radius:6px;transition:all .12s"
+              onmouseover="this.style.color='var(--red)';this.style.background='var(--red2)'"
+              onmouseout="this.style.color='var(--m2)';this.style.background=''"
+              onclick="deleteScriptRow('${p.id}','${av.id}','${ang.id}','${row.id}')">
+              <i class="ti ti-trash" style="font-size:12px"></i>
+            </button>
+          </div>
+        </div>`;
+      }).join('');
+
+      allAngBlocks.push(`<div class="ang-block">
+        <div class="ang-block-head">
+          <div class="ang-block-num">${gIdx}</div>
+          <div class="ang-block-name" contenteditable="true" spellcheck="false"
+            data-ang="${ang.id}"
+            onblur="saveAngField(this,'${p.id}','${av.id}')"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
+          >${xss(ang.name)}</div>
+          <span style="display:inline-flex;align-items:center;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.3px;white-space:nowrap;background:${col}22;color:${col};border:1px solid ${col}44;cursor:default;flex-shrink:0">${xss(av.name)}</span>
+          <button class="btn btn-g" style="font-size:11px;padding:5px 9px" onclick="addScriptRow('${p.id}','${av.id}','${ang.id}')">
+            <i class="ti ti-plus"></i>Ligne
+          </button>
+          <button class="tbn" style="color:var(--m2);padding:4px 6px;border-radius:6px;font-size:12px;transition:all .12s"
+            onmouseover="this.style.color='var(--red)';this.style.background='var(--red2)'"
+            onmouseout="this.style.color='var(--m2)';this.style.background=''"
+            onclick="deleteAngle('${p.id}','${av.id}','${ang.id}')">
+            <i class="ti ti-trash"></i>
+          </button>
+        </div>
+        <div class="ang-tbl-head">
+          <div class="ang-tbl-hcell">Format</div>
+          <div class="ang-tbl-hcell">Inspiration</div>
+          <div class="ang-tbl-hcell">Concept</div>
+          <div class="ang-tbl-hcell" style="justify-content:center">Statut</div>
+          <div class="ang-tbl-hcell"></div>
+        </div>
+        ${rows||`<div style="padding:18px 14px;color:var(--m2);font-size:12px;text-align:center">Aucune ligne — clique <strong>+ Ligne</strong> pour commencer</div>`}
+      </div>`);
+    });
+  });
+
+  return `
+    <div class="pp-head">
+      <div class="pp-head-img">${p.emoji}</div>
+      <div>
+        <div class="pp-head-name av-editable"
+          contenteditable="true" spellcheck="false"
+          onblur="saveProdField(this,'${p.id}','name')"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
+          title="Click to edit name"
+        >${xss(p.name)}</div>
+        <div class="pp-head-sub" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:3px">
+          <span style="color:var(--m2)">${gIdx} angle${gIdx!==1?'s':''} ·</span>
+          <span class="pp-inline-edit av-editable" style="color:var(--green);font-weight:700"
+            contenteditable="true" spellcheck="false"
+            onblur="saveProdField(this,'${p.id}','price')"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
+            title="Click to edit price"
+          >${xss(String(p.price))}</span>
+          <span style="color:var(--m2)">MAD ·</span>
+          <span class="pp-inline-edit av-editable" style="color:var(--m1);font-weight:600"
+            contenteditable="true" spellcheck="false"
+            onblur="saveProdField(this,'${p.id}','category')"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
+            title="Click to edit category"
+          >${xss(p.category)}</span>
+        </div>
+        <div class="pp-landing-list" id="pp-lp-${p.id}">
+          ${(p.landingPages||[]).map(lp=>`
+            <div class="pp-landing-item">
+              <a class="pp-landing-link" href="${xss(lp.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="${xss(lp.url)}">
+                <i class="ti ti-world" style="font-size:11px;flex-shrink:0"></i>
+                <span class="pp-landing-text">${xss(lp.label||lp.url)}</span>
+              </a>
+              <button class="tbn pp-landing-edit" title="Edit" onclick="editProductLp('${p.id}','${lp.id}')"><i class="ti ti-pencil" style="font-size:11px"></i></button>
+              <button class="tbn pp-landing-edit" title="Delete" onclick="deleteProductLp('${p.id}','${lp.id}')"><i class="ti ti-x" style="font-size:11px"></i></button>
+            </div>`).join('')}
+          <button class="pp-landing-add" onclick="addProductLp('${p.id}')">
+            <i class="ti ti-plus" style="font-size:11px"></i>Add landing page
+          </button>
+        </div>
+      </div>
+      <div class="pp-details-row" onclick="event.stopPropagation()" style="grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:6px 0 14px">
+        <div class="pp-detail-field"><label>Stock</label><input type="number" min="0" value="${p.stock||0}" onchange="updateProductField('${p.id}','stock',this.value);renderProducts();" placeholder="0"></div>
+        <div class="pp-detail-field"><label>Coût unitaire (MAD)</label><input type="number" min="0" value="${p.unitCost||0}" onchange="updateProductField('${p.id}','unitCost',this.value);renderProducts();" placeholder="0"></div>
+        <div class="pp-detail-field"><label>Tracking code</label><input type="text" value="${xss(p.trackingCode||'')}" placeholder="SKU / code" onchange="updateProductField('${p.id}','trackingCode',this.value);renderProducts();"></div>
+      </div>
+      <div class="pp-metrics">
+        <div class="pp-metric"><div class="pp-metric-l">Stock restant</div><div class="pp-metric-v">${m.stock}</div></div>
+        <div class="pp-metric"><div class="pp-metric-l">Total Ads Spend</div><div class="pp-metric-v purple">${m.ads}</div></div>
+        <div class="pp-metric"><div class="pp-metric-l">Revenue</div><div class="pp-metric-v green">${m.revenue}</div></div>
+        <div class="pp-metric"><div class="pp-metric-l">Profit</div><div class="pp-metric-v green">${m.profit}</div></div>
+        <div class="pp-metric"><div class="pp-metric-l">Taux confirmation</div><div class="pp-metric-v blue">${m.confirmation}</div></div>
+        <div class="pp-metric"><div class="pp-metric-l">Taux livraison</div><div class="pp-metric-v blue">${m.delivery}</div></div>
+      </div>
+      <div class="pp-creative-box" onclick="openBestCreatives('${p.id}')">
+        <div class="pp-creative-icon"><i class="ti ti-sparkles"></i></div>
+        <div>
+          <div class="pp-creative-title">Best Creatives</div>
+          <div class="pp-creative-count">${(p.bestCreatives||[]).length} liens</div>
+        </div>
+      </div>
+      <div class="pp-head-r">
+        ${(p.status==='test'||productMenuView==='test') ? `
+        <button class="ss-avail-btn ${p.ssAvailable?'available':'not-available'}" id="ss-avail-${p.id}"
+          onclick="toggleSSAvailability('${p.id}',this)">
+          <i class="ti ti-${p.ssAvailable?'circle-check':'circle-x'}"></i>
+          ${p.ssAvailable?'Available on SpaceSeller':'Not on SpaceSeller'}
+        </button>` : ''}
+        <button class="btn btn-p flat-add-angle-btn" onclick="addAngleDirect('${p.id}')" style="font-size:11px;padding:6px 11px">
+          <i class="ti ti-plus"></i>Ajouter Angle
+        </button>
+        <button class="btn btn-g" onclick="addAvatar('${p.id}')" style="font-size:11px;padding:6px 11px" title="Nouveau groupe d'avatar">
+          <i class="ti ti-user-plus"></i>Groupe
+        </button>
+      </div>
+    </div>
+    <div class="pp-body">
+      <div class="angles-view" style="padding:16px">
+        ${allAngBlocks.join('')||`<div style="text-align:center;padding:40px 20px;color:var(--m2)"><i class="ti ti-layout-grid" style="font-size:32px;display:block;margin-bottom:10px;opacity:.3"></i><p style="font-size:13px;font-weight:600">Aucun angle</p><p style="font-size:12px;margin-top:6px">Clique <strong>Ajouter Angle</strong> pour commencer</p></div>`}
+      </div>
+    </div>`;
 }
 
 function renderAvatarsView(p){
@@ -8982,6 +9152,48 @@ function openAvatar(pid, avid){
 function closeAngles(){
   activeAvId=null;
   renderProductPanel();
+}
+
+function addAngleDirect(pid){
+  const p=products.find(x=>x.id===pid); if(!p) return;
+  if(!p.avatars||p.avatars.length===0){
+    const ts=Date.now();
+    p.avatars=[{id:'av'+ts,name:'Avatar 1',gender:'',age:'',photo:'',desc:'',objectives:'',angles:[]}];
+  }
+  if(p.avatars.length===1){
+    addAngleToAvatar(pid,p.avatars[0].id);
+  } else {
+    showAvatarPickerForAngle(pid);
+  }
+}
+
+function addAngleToAvatar(pid,avid){
+  const p=products.find(x=>x.id===pid); if(!p) return;
+  const av=p.avatars.find(a=>a.id===avid); if(!av) return;
+  const n=av.angles.length+1; const ts=Date.now();
+  av.angles.push({id:'ang'+ts,name:'Angle #'+n,rows:[
+    {id:'r'+ts+'a',type:'video',link:'',script:'',creative:'',validated:false,launched:false},
+    {id:'r'+ts+'b',type:'image',link:'',script:'',creative:'',validated:false,launched:false},
+  ]});
+  saveProducts(); renderProductPanel(); showToast('Angle ajouté ✓');
+}
+
+function showAvatarPickerForAngle(pid){
+  const p=products.find(x=>x.id===pid); if(!p) return;
+  document.getElementById('av-picker')?.remove();
+  const picker=document.createElement('div');
+  picker.id='av-picker';
+  picker.style.cssText='position:fixed;z-index:9999;background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:8px;box-shadow:0 8px 28px rgba(0,0,0,.18);min-width:160px';
+  const btn=document.querySelector('.flat-add-angle-btn');
+  if(btn){const r=btn.getBoundingClientRect();picker.style.top=(r.bottom+6)+'px';picker.style.left=r.left+'px';}
+  else{picker.style.top='40%';picker.style.left='50%';picker.style.transform='translate(-50%,-50%)';}
+  picker.innerHTML=`<div style="font-size:10px;font-weight:700;color:var(--m2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;padding:0 4px">Choisir groupe</div>`
+    +p.avatars.map(av=>`<div onclick="event.stopPropagation();document.getElementById('av-picker')?.remove();addAngleToAvatar('${pid}','${av.id}')"
+      style="padding:6px 10px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;transition:background .1s"
+      onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''"
+    >${xss(av.name)}</div>`).join('');
+  document.body.appendChild(picker);
+  setTimeout(()=>document.addEventListener('click',function h(){document.getElementById('av-picker')?.remove();document.removeEventListener('click',h);}),50);
 }
 
 function addAvatar(pid){
