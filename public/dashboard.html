@@ -1772,19 +1772,20 @@ tr.clickable:hover{background:var(--s2)!important}
 .ang-block-name:focus{background:var(--s1);box-shadow:0 0 0 2px var(--acc)}
 .ang-block-name:empty:before{content:'Nom de l'angle…';color:var(--m2);font-style:italic;pointer-events:none}
 /* Angle table header */
-.ang-tbl-wrap{overflow-x:auto}
-.ang-tbl-head{display:grid;grid-template-columns:88px 1fr 1.3fr 110px 112px 36px;background:var(--s2);border-bottom:1px solid var(--bd);min-width:640px}
-.ang-tbl-hcell{padding:7px 10px;font-size:10px;font-weight:800;color:var(--m1);text-transform:uppercase;letter-spacing:.4px;border-right:1px solid var(--bd)}
+.ang-tbl-wrap{overflow-x:auto;border-radius:0 0 12px 12px}
+.ang-tbl-head{display:grid;grid-template-columns:86px 1fr 1fr 130px 112px 36px;background:var(--s2);border-bottom:2px solid var(--bd);min-width:600px}
+.ang-tbl-hcell{padding:7px 10px;font-size:10px;font-weight:800;color:var(--m1);text-transform:uppercase;letter-spacing:.4px;border-right:1px solid var(--bd);display:flex;align-items:center}
 .ang-tbl-hcell:last-child{border-right:none}
 /* Angle table row */
-.ang-tbl-row{display:grid;grid-template-columns:88px 1fr 1.3fr 110px 112px 36px;border-bottom:1px solid var(--bd);min-width:640px}
+.ang-tbl-row{display:grid;grid-template-columns:86px 1fr 1fr 130px 112px 36px;border-bottom:1px solid var(--bd);min-width:600px;min-height:40px}
 .ang-tbl-row:last-child{border-bottom:none}
-.ang-tbl-row:hover{background:var(--s2)}
-.ang-tbl-cell{padding:8px 10px;border-right:1px solid var(--bd);display:flex;align-items:flex-start;gap:6px}
-.ang-tbl-cell:last-child{border-right:none;align-items:center;justify-content:center;padding:0}
-/* Hook field */
-.ang-hook-edit{font-size:12.5px;color:var(--txt);outline:none;width:100%;min-height:30px;line-height:1.5;white-space:pre-wrap;-webkit-user-select:text;user-select:text;cursor:text;padding:2px 0;font-weight:600}
-.ang-hook-edit:empty:before{content:attr(data-placeholder);color:var(--m2);font-style:italic;pointer-events:none;font-weight:400}
+.ang-tbl-row:hover{background:rgba(91,80,240,.03)}
+.ang-tbl-cell{border-right:1px solid var(--bd);display:flex;align-items:center;gap:4px;overflow:hidden}
+.ang-tbl-cell:last-child{border-right:none;justify-content:center;padding:0}
+/* Cell input — same height for all cells, true table look */
+.ang-cell-input{font-size:12.5px;color:var(--txt);background:transparent;border:none;outline:none;width:100%;height:100%;padding:8px 10px;font-family:inherit;line-height:1.4;cursor:text}
+.ang-cell-input::placeholder{color:var(--m2);font-style:italic}
+.ang-cell-input:focus{background:rgba(91,80,240,.04)}
 /* Status button 4 states */
 .ang-status-btn{display:inline-flex;align-items:center;gap:4px;padding:5px 8px;border-radius:8px;border:none;cursor:pointer;font-size:11px;font-weight:700;font-family:inherit;transition:all .15s;white-space:nowrap;width:100%;justify-content:center}
 .ang-st-idea{background:var(--s3);color:var(--m1)}.ang-st-idea:hover{filter:brightness(.92)}
@@ -8055,24 +8056,12 @@ function renderFlatAnglesView(p){
         const fmt = row.format||(row.type==='image'?'image':row.type==='carousel'?'carousel':'video');
         const fm = fmtMap[fmt]||fmtMap.video;
         const inspo = row.inspiration||row.link||'';
-        const inspoIcon = inspo
-          ? `<a href="${xss(inspo)}" target="_blank" title="${xss(inspo)}" style="display:inline-flex;align-items:center;gap:4px;color:var(--acc);font-size:11px;font-weight:600;text-decoration:none;padding:3px 7px;border-radius:7px;background:rgba(91,80,240,.08);border:1px solid rgba(91,80,240,.18);max-width:100%;overflow:hidden"><i class="ti ti-external-link" style="font-size:11px;flex-shrink:0"></i><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${xss(new URL(inspo.startsWith('http')?inspo:'https://'+inspo).hostname||inspo)}</span></a>`
-          : `<label style="display:inline-flex;align-items:center;gap:4px;color:var(--m2);font-size:11px;cursor:pointer;padding:3px 7px;border-radius:7px;border:1px dashed var(--bd2);transition:all .12s" onmouseover="this.style.borderColor='var(--acc)';this.style.color='var(--acc)'" onmouseout="this.style.borderColor='var(--bd2)';this.style.color='var(--m2)'"><i class="ti ti-link" style="font-size:11px"></i>Ajouter<input type="url" style="position:absolute;opacity:0;width:0;height:0;pointer-events:none" onchange="saveRowFmtField(this,'${p.id}','${av.id}','${ang.id}','${row.id}','inspiration');renderProductPanel()"></label>`;
-        const inspoInput = `<div class="ang-inspo-wrap" style="gap:4px">
-          <input class="ang-inspo-input" type="url" placeholder="https://…"
-            value="${xss(inspo)}"
-            onblur="saveRowFmtField(this,'${p.id}','${av.id}','${ang.id}','${row.id}','inspiration');renderProductPanel()"
-            onkeydown="if(event.key==='Enter'){this.blur()}"
-            style="font-size:11px;padding:4px 7px"
-          >
-          ${inspoIcon}
-        </div>`;
         const concept = row.concept||row.script||'';
         const hook = row.hook||'';
-        /* 4-state status */
         const st = row.status||(row.launched?'live':'idea');
         const stCfg = {idea:{cls:'ang-st-idea',icon:'ti-bulb',label:'Idée'},creation:{cls:'ang-st-creation',icon:'ti-pencil',label:'Création'},test:{cls:'ang-st-test',icon:'ti-flask',label:'En test'},live:{cls:'ang-st-live',icon:'ti-rocket',label:'Live'}};
         const sc = stCfg[st]||stCfg.idea;
+        const inspoLink = inspo ? `<a href="${xss(inspo)}" target="_blank" style="color:var(--acc);flex-shrink:0;display:flex;align-items:center" title="Ouvrir"><i class="ti ti-external-link" style="font-size:12px"></i></a>` : '';
         return `<div class="ang-tbl-row" data-ang="${ang.id}" data-row="${row.id}">
           <div class="ang-tbl-cell" style="align-items:center;justify-content:center">
             <span class="ang-fmt-badge ${fm.cls}" title="Cliquer pour changer"
@@ -8080,19 +8069,28 @@ function renderFlatAnglesView(p){
               <i class="ti ${fm.icon}"></i>${fm.label}
             </span>
           </div>
-          <div class="ang-tbl-cell">
-            <div class="ang-hook-edit" contenteditable="true" spellcheck="false"
-              data-placeholder="Hook / accroche…"
+          <div class="ang-tbl-cell" style="align-items:center;padding:0 0 0 8px">
+            <input class="ang-cell-input" type="text" placeholder="Hook / accroche…"
+              value="${xss(hook)}"
               onblur="saveRowFmtField(this,'${p.id}','${av.id}','${ang.id}','${row.id}','hook')"
-            >${xss(hook)}</div>
+              onkeydown="if(event.key==='Enter'){this.blur()}"
+            >
           </div>
-          <div class="ang-tbl-cell">
-            <div class="ang-concept-edit" contenteditable="true" spellcheck="false"
-              data-placeholder="Concept visuel…"
+          <div class="ang-tbl-cell" style="align-items:center;padding:0 0 0 8px">
+            <input class="ang-cell-input" type="text" placeholder="Concept visuel…"
+              value="${xss(concept)}"
               onblur="saveRowFmtField(this,'${p.id}','${av.id}','${ang.id}','${row.id}','concept')"
-            >${xss(concept)}</div>
+              onkeydown="if(event.key==='Enter'){this.blur()}"
+            >
           </div>
-          <div class="ang-tbl-cell" style="align-items:center">${inspoInput}</div>
+          <div class="ang-tbl-cell" style="align-items:center;gap:5px;padding:0 6px">
+            <input class="ang-cell-input" type="url" placeholder="https://…"
+              value="${xss(inspo)}"
+              onblur="saveRowFmtField(this,'${p.id}','${av.id}','${ang.id}','${row.id}','inspiration')"
+              onkeydown="if(event.key==='Enter'){this.blur()}"
+              style="min-width:0"
+            >${inspoLink}
+          </div>
           <div class="ang-tbl-cell" style="align-items:center;padding:6px 8px">
             <button class="ang-status-btn ${sc.cls}" title="Cliquer pour changer"
               onclick="cycleRowStatus('${p.id}','${av.id}','${ang.id}','${row.id}',this)">
@@ -8801,21 +8799,15 @@ function saveRowFmtField(el,pid,avid,angId,rowId,field){
   if(field==='inspiration') row.link=val;
   if(field==='concept') row.script=val;
   saveProducts();
-  /* If inspiration updated, refresh preview */
+  /* If inspiration updated, refresh link icon */
   if(field==='inspiration'){
-    const wrap=el.closest('.ang-inspo-wrap');
-    if(wrap){
-      let prev=wrap.querySelector('.ang-inspo-preview');
-      if(prev) prev.remove();
+    const cell=el.closest('.ang-tbl-cell');
+    if(cell){
+      let lnk=cell.querySelector('a[target="_blank"]');
       if(val){
-        const isImg=/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(val);
-        const a=document.createElement('a');
-        a.href=val; a.target='_blank'; a.className='ang-inspo-preview';
-        if(isImg){ const img=document.createElement('img'); img.src=val; img.onerror=()=>img.style.display='none'; a.appendChild(img); }
-        else { a.innerHTML=`<i class="ti ti-external-link" style="font-size:11px;flex-shrink:0"></i>`; }
-        const sp=document.createElement('span'); sp.style.cssText='overflow:hidden;text-overflow:ellipsis;flex:1;font-size:11px'; sp.textContent=val;
-        a.appendChild(sp); wrap.appendChild(a);
-      }
+        if(!lnk){lnk=document.createElement('a');lnk.target='_blank';lnk.style.cssText='color:var(--acc);flex-shrink:0;display:flex;align-items:center';lnk.title='Ouvrir';lnk.innerHTML='<i class="ti ti-external-link" style="font-size:12px"></i>';cell.appendChild(lnk);}
+        lnk.href=val;
+      } else if(lnk) lnk.remove();
     }
   }
 }
