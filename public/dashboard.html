@@ -8814,57 +8814,62 @@ function renderAnglesView(p, av){
       /* backward compat: old type field */
       const fmt = row.format || (row.type==='image'?'image':row.type==='carousel'?'carousel':'video');
       const fm = fmtMap[fmt]||fmtMap.video;
-      /* Inspiration preview */
+      const hook = row.hook||'';
+      const concept = row.concept||'';
+      const script = row.script||row.voix||'';
       const inspo = row.inspiration||row.link||'';
-      const isImg = /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(inspo);
-      const inspoPreviewHTML = inspo
-        ? (isImg
-            ? `<a href="${xss(inspo)}" target="_blank" class="ang-inspo-preview"><img src="${xss(inspo)}" onerror="this.style.display='none'"><span style="overflow:hidden;text-overflow:ellipsis;flex:1">${xss(inspo)}</span></a>`
-            : `<a href="${xss(inspo)}" target="_blank" class="ang-inspo-preview"><i class="ti ti-external-link" style="font-size:11px;flex-shrink:0"></i><span style="overflow:hidden;text-overflow:ellipsis;flex:1">${xss(inspo)}</span></a>`)
-        : '';
-      const concept = row.concept||row.script||'';
-      return `<div class="ang-tbl-row" data-ang="${ang.id}" data-row="${row.id}">
-        <div class="ang-tbl-cell" style="align-items:center">
-          <span class="ang-fmt-badge ${fm.cls}" title="Cliquer pour changer"
+      const inspoLink = inspo ? `<a href="${xss(inspo)}" target="_blank" style="color:var(--acc);flex-shrink:0;display:inline-flex;align-items:center;margin-left:4px" title="Ouvrir"><i class="ti ti-external-link" style="font-size:12px"></i></a>` : '';
+      const sc = _STATUS_CFG[row.status||(row.launched?'live':'idea')]||_STATUS_CFG.idea;
+      return `<tr class="ang-tr" data-ang="${ang.id}" data-row="${row.id}">
+        <td class="ang-td" style="text-align:center;width:86px">
+          <span class="ang-fmt-badge ${fm.cls}" title="Cliquer pour changer" style="cursor:pointer"
             onclick="cycleRowFmt('${p.id}','${av.id}','${ang.id}','${row.id}')">
             <i class="ti ${fm.icon}"></i>${fm.label}
-            <i class="ti ti-refresh" style="font-size:9px;opacity:.5;margin-left:2px"></i>
           </span>
-        </div>
-        <div class="ang-tbl-cell">
-          <div class="ang-inspo-wrap">
-            <input class="ang-inspo-input" type="url" placeholder="Lien inspiration (Facebook, TikTok…)"
-              value="${xss(inspo)}"
-              onblur="saveRowFmtField(this,'${p.id}','${av.id}','${ang.id}','${row.id}','inspiration')"
-              onkeydown="if(event.key==='Enter'){this.blur()}"
-            >
-            ${inspoPreviewHTML}
-          </div>
-        </div>
-        <div class="ang-tbl-cell">
-          <div class="ang-concept-edit" contenteditable="true" spellcheck="false"
-            data-placeholder="Décris le concept visuel de ce format…"
+        </td>
+        <td class="ang-td" style="padding:0">
+          <input class="ang-cell-input" type="text" placeholder="Hook / accroche…"
+            value="${xss(hook)}"
+            onblur="saveRowFmtField(this,'${p.id}','${av.id}','${ang.id}','${row.id}','hook')"
+            onkeydown="if(event.key==='Enter'){this.blur()}">
+        </td>
+        <td class="ang-td" style="padding:0">
+          <input class="ang-cell-input" type="text" placeholder="Concept visuel…"
+            value="${xss(concept)}"
             onblur="saveRowFmtField(this,'${p.id}','${av.id}','${ang.id}','${row.id}','concept')"
-          >${xss(concept)}</div>
-        </div>
-        <div class="ang-tbl-cell" style="align-items:center;justify-content:center">
-          <button class="ang-launch-btn ${row.launched?'ang-launched':'ang-not-launched'}"
-            onclick="toggleAngLaunched('${p.id}','${av.id}','${ang.id}','${row.id}',this)">
-            <i class="ti ti-${row.launched?'rocket':'rocket-off'}"></i>
-            ${row.launched?'Live':'À lancer'}
+            onkeydown="if(event.key==='Enter'){this.blur()}">
+        </td>
+        <td class="ang-td" style="padding:0">
+          <input class="ang-cell-input" type="text" placeholder="Script / voix off…"
+            value="${xss(script)}"
+            onblur="saveRowFmtField(this,'${p.id}','${av.id}','${ang.id}','${row.id}','script')"
+            onkeydown="if(event.key==='Enter'){this.blur()}">
+        </td>
+        <td class="ang-td" style="padding:0 4px">
+          <input class="ang-cell-input" type="url" placeholder="https://…"
+            value="${xss(inspo)}"
+            onblur="saveRowFmtField(this,'${p.id}','${av.id}','${ang.id}','${row.id}','inspiration')"
+            onkeydown="if(event.key==='Enter'){this.blur()}"
+            style="width:calc(100% - 20px)">${inspoLink}
+        </td>
+        <td class="ang-td" style="padding:5px 8px;width:112px">
+          <button class="ang-status-btn ${sc.cls}" title="Cliquer pour changer"
+            onclick="cycleRowStatus('${p.id}','${av.id}','${ang.id}','${row.id}',this)">
+            <i class="ti ${sc.icon}"></i>${sc.label}
           </button>
-        </div>
-        <div class="ang-tbl-cell">
-          <button class="tbn" title="Supprimer ligne" style="color:var(--m2);font-size:13px;padding:4px 6px;border-radius:6px;transition:all .12s"
+        </td>
+        <td class="ang-td" style="text-align:center;width:36px;padding:0">
+          <button class="tbn" title="Supprimer"
             onmouseover="this.style.color='var(--red)';this.style.background='var(--red2)'"
             onmouseout="this.style.color='var(--m2)';this.style.background=''"
             onclick="deleteScriptRow('${p.id}','${av.id}','${ang.id}','${row.id}')">
             <i class="ti ti-trash" style="font-size:12px"></i>
           </button>
-        </div>
-      </div>`;
+        </td>
+      </tr>`;
     }).join('');
 
+    const emptyRow = `<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--m2);font-size:12px">Aucune ligne — clique <strong>+ Ligne</strong></td></tr>`;
     return `<div class="ang-block">
       <div class="ang-block-head">
         <div class="ang-block-num">${ai+1}</div>
@@ -8883,14 +8888,25 @@ function renderAnglesView(p, av){
           <i class="ti ti-trash"></i>
         </button>
       </div>
-      <div class="ang-tbl-head">
-        <div class="ang-tbl-hcell">Format</div>
-        <div class="ang-tbl-hcell">Inspiration</div>
-        <div class="ang-tbl-hcell">Concept</div>
-        <div class="ang-tbl-hcell" style="justify-content:center">Statut</div>
-        <div class="ang-tbl-hcell"></div>
+      <div style="overflow-x:auto">
+      <table class="ang-table">
+        <colgroup>
+          <col style="width:86px"><col><col><col><col style="width:130px"><col style="width:112px"><col style="width:36px">
+        </colgroup>
+        <thead>
+          <tr class="ang-thead-row">
+            <th class="ang-th" style="text-align:center">Format</th>
+            <th class="ang-th">Hook</th>
+            <th class="ang-th">Concept</th>
+            <th class="ang-th">Script</th>
+            <th class="ang-th">Inspiration</th>
+            <th class="ang-th" style="text-align:center">Statut</th>
+            <th class="ang-th"></th>
+          </tr>
+        </thead>
+        <tbody>${rows||emptyRow}</tbody>
+      </table>
       </div>
-      ${rows||`<div style="padding:18px 14px;color:var(--m2);font-size:12px;text-align:center">Aucune ligne — clique <strong>+ Ligne</strong> pour commencer</div>`}
     </div>`;
   }).join('');
 
@@ -10027,7 +10043,21 @@ function renderCampaigns(){
   // Only init if the campaigns page elements exist in DOM
   if(!document.getElementById('calBody')) return;
   renderCal();
-  renderTable();
+  /* Show cached campaigns IMMEDIATELY so user sees data without waiting for API */
+  if(!af_campaigns.length){
+    try{
+      const _c=localStorage.getItem('af_campaigns_cache');
+      if(_c){ const _p=JSON.parse(_c); if(_p.data&&_p.data.length){
+        af_campaigns=_p.data;
+        const _mins=Math.round((Date.now()-_p.ts)/60000);
+        renderTable(); updateTabBadges(); updateDash();
+        const upd=document.getElementById('campUpd');
+        if(upd) upd.textContent='Cache ('+(_mins<1?'<1':_mins)+'min ago)';
+      }}
+    }catch(_){}
+  } else {
+    renderTable();
+  }
   loadAccounts();
   checkTokenExpiry();
 }
@@ -10697,18 +10727,27 @@ async function fetchAll() {
     } catch(e) { acc.status = 'err'; return []; }
   }));
 
-  af_campaigns = results.flat();
-  /* Cache campaigns for instant reload */
-  try{ localStorage.setItem('af_campaigns_cache', JSON.stringify({ts:Date.now(), data:af_campaigns})); }catch(_){}
+  const freshData = results.flat();
+  /* Only update cache if we actually got data — never overwrite with empty on API errors */
+  if(freshData.length > 0){
+    af_campaigns = freshData;
+    try{ localStorage.setItem('af_campaigns_cache', JSON.stringify({ts:Date.now(), data:af_campaigns})); }catch(_){}
+    document.getElementById('campUpd').textContent = 'Updated ' + new Date().toLocaleTimeString();
+    af_toast('Loaded ' + af_campaigns.length + ' campaigns from ' + af_accounts.length + ' account(s)');
+  } else if(af_campaigns.length > 0) {
+    /* API returned nothing but we have cached data — keep showing it */
+    const hasErr = af_accounts.some(a=>a.status==='err');
+    document.getElementById('campUpd').textContent = hasErr ? '⚠️ Stale cache — token error' : 'No new data';
+  } else {
+    document.getElementById('campUpd').textContent = af_accounts.some(a=>a.status==='err') ? '⚠️ Token error — reconnect account' : 'No data';
+  }
   updateTabBadges();
   updateDash();
   renderTable();
   renderAccCards();
   rebuildAccDrop();
   saveAccounts();
-  document.getElementById('campUpd').textContent = 'Updated ' + new Date().toLocaleTimeString();
   updateBadges();
-  af_toast('Loaded ' + af_campaigns.length + ' campaigns from ' + af_accounts.length + ' account(s)');
   updateCampStatusBanner();
 }
 
