@@ -2442,7 +2442,10 @@ span.flatpickr-weekday{display:inline-block!important;width:calc(100%/7)!importa
         <button class="btn btn-g" style="font-size:11px;padding:5px 9px" onclick="procAddBlock('text')"><i class="ti ti-align-left"></i>Texte</button>
         <button class="btn btn-g" style="font-size:11px;padding:5px 9px" onclick="procAddBlock('checklist')"><i class="ti ti-checkbox"></i>Checklist</button>
         <button class="btn btn-g" style="font-size:11px;padding:5px 9px" onclick="procAddBlock('note')"><i class="ti ti-info-circle"></i>Note</button>
+        <button class="btn btn-g" style="font-size:11px;padding:5px 9px" onclick="procAddBlock('warning')"><i class="ti ti-alert-triangle"></i>Alerte</button>
         <button class="btn btn-g" style="font-size:11px;padding:5px 9px" onclick="procAddBlock('table')"><i class="ti ti-table"></i>Table</button>
+        <button class="btn btn-g" style="font-size:11px;padding:5px 9px" onclick="procAddBlock('image')"><i class="ti ti-photo"></i>Image</button>
+        <button class="btn btn-g" style="font-size:11px;padding:5px 9px" onclick="procAddBlock('code')"><i class="ti ti-code"></i>Code</button>
         <button class="btn btn-g" style="font-size:11px;padding:5px 9px" onclick="procAddBlock('divider')"><i class="ti ti-minus"></i>---</button>
         <div style="width:1px;height:20px;background:var(--bd);margin:0 4px"></div>
         <button id="proc-undo-btn" class="btn btn-g" style="font-size:11px;padding:5px 9px;opacity:.35" disabled onclick="procUndo()" title="Rien à annuler">
@@ -6676,6 +6679,7 @@ function procBlockEl(b, i, doc, stepNum){
   ctrl.innerHTML = `
     <button title="Monter" style="background:none;border:none;cursor:pointer;color:var(--m2);font-size:12px;padding:2px 5px;border-radius:5px;transition:background .12s" onmouseover="this.style.background='var(--s3)'" onmouseout="this.style.background=''" onclick="procMoveUp(${i})" ${i===0?'disabled':''}>↑</button>
     <button title="Descendre" style="background:none;border:none;cursor:pointer;color:var(--m2);font-size:12px;padding:2px 5px;border-radius:5px;transition:background .12s" onmouseover="this.style.background='var(--s3)'" onmouseout="this.style.background=''" onclick="procMoveDown(${i})" ${i===doc.blocks.length-1?'disabled':''}>↓</button>
+    <button title="Dupliquer" style="background:none;border:none;cursor:pointer;color:var(--m2);font-size:11px;padding:2px 5px;border-radius:5px;transition:background .12s" onmouseover="this.style.background='var(--s3)'" onmouseout="this.style.background=''" onclick="procDuplicateBlock('${b.id}')"><i class="ti ti-copy" style="font-size:11px"></i></button>
     <button title="Supprimer" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:13px;padding:2px 5px;border-radius:5px;transition:background .12s" onmouseover="this.style.background='var(--s3)'" onmouseout="this.style.background=''" onclick="procDeleteBlock('${b.id}')">×</button>`;
   wrap.appendChild(ctrl);
   wrap.addEventListener('mouseenter',()=>ctrl.style.opacity='1');
@@ -6745,8 +6749,24 @@ function procBlockEl(b, i, doc, stepNum){
 
   } else if(b.type==='checklist'){
     const items = b.items||[''];
+    const checked = b.checked||[];
+    const doneCount = checked.filter(Boolean).length;
+    const pct = items.length ? Math.round(doneCount/items.length*100) : 0;
     const listEl = document.createElement('div');
     listEl.style.cssText = 'display:flex;flex-direction:column;gap:6px;padding:10px 14px;background:var(--s2);border:1px solid var(--bd);border-radius:8px';
+    /* progress bar */
+    const progWrap = document.createElement('div');
+    progWrap.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:6px';
+    const progBar = document.createElement('div');
+    progBar.style.cssText = 'flex:1;height:5px;background:var(--bd);border-radius:999px;overflow:hidden';
+    const progFill = document.createElement('div');
+    progFill.style.cssText = `height:100%;width:${pct}%;background:var(--green);border-radius:999px;transition:width .3s`;
+    progBar.appendChild(progFill);
+    const progLbl = document.createElement('span');
+    progLbl.style.cssText = 'font-size:10px;font-weight:700;color:var(--m2);min-width:36px;text-align:right';
+    progLbl.textContent = `${doneCount}/${items.length}`;
+    progWrap.appendChild(progBar); progWrap.appendChild(progLbl);
+    listEl.appendChild(progWrap);
     items.forEach((txt,ci)=>{
       const row = document.createElement('div');
       row.style.cssText = 'display:flex;gap:8px;align-items:center';
@@ -6837,6 +6857,70 @@ function procBlockEl(b, i, doc, stepNum){
     btns.appendChild(addRow); btns.appendChild(addCol);
     body.appendChild(wrapper); body.appendChild(btns);
 
+  } else if(b.type==='warning'){
+    const lbl = document.createElement('div');
+    lbl.style.cssText = 'font-size:10px;font-weight:800;color:var(--red);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px;opacity:.9';
+    lbl.innerHTML = '<i class="ti ti-alert-triangle"></i> Alerte';
+    const el = document.createElement('div');
+    el.contentEditable = 'true';
+    el.style.cssText = 'font-size:12.5px;color:var(--red);outline:none;padding:10px 14px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.25);border-radius:8px;border-left:3px solid var(--red);line-height:1.7;white-space:pre-wrap;min-height:36px';
+    el.textContent = b.content||'';
+    el.dataset.placeholder = 'Avertissement critique…';
+    el.addEventListener('input',()=>{ b.content=el.innerText; procSave(); });
+    el.addEventListener('focus',()=>el.style.borderColor='var(--red)');
+    el.addEventListener('blur',()=>el.style.borderColor='rgba(239,68,68,.25)');
+    body.appendChild(lbl); body.appendChild(el);
+
+  } else if(b.type==='image'){
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'border:1px solid var(--bd);border-radius:8px;overflow:hidden;background:var(--s2)';
+    const urlBar = document.createElement('div');
+    urlBar.style.cssText = 'display:flex;gap:6px;padding:8px 10px;background:var(--s3);border-bottom:1px solid var(--bd)';
+    const urlInp = document.createElement('input');
+    urlInp.type='url'; urlInp.placeholder='https://… (URL de l\'image)';
+    urlInp.value = b.url||'';
+    urlInp.style.cssText = 'flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:5px 8px;font-size:12px;color:var(--txt);outline:none;font-family:inherit';
+    const preview = document.createElement('div');
+    preview.style.cssText = 'padding:10px;text-align:center;min-height:60px;display:flex;align-items:center;justify-content:center';
+    const updateImg = ()=>{
+      const val = urlInp.value.trim(); b.url=val; procSave();
+      if(val){ preview.innerHTML=`<img src="${val.replace(/"/g,'&quot;')}" style="max-width:100%;max-height:300px;border-radius:6px;object-fit:contain" onerror="this.style.display='none'" />`; }
+      else { preview.innerHTML='<span style="color:var(--m2);font-size:12px;display:flex;flex-direction:column;align-items:center;gap:4px"><i class="ti ti-photo" style="font-size:22px;opacity:.3"></i>Colle l\'URL d\'une image</span>'; }
+    };
+    urlInp.addEventListener('change',updateImg); urlInp.addEventListener('blur',updateImg);
+    const captionInp = document.createElement('input');
+    captionInp.type='text'; captionInp.placeholder='Légende (optionnel)';
+    captionInp.value=b.caption||'';
+    captionInp.style.cssText='width:100%;box-sizing:border-box;background:transparent;border:none;border-top:1px solid var(--bd);padding:7px 10px;font-size:11.5px;color:var(--m1);outline:none;font-family:inherit;font-style:italic';
+    captionInp.addEventListener('input',()=>{ b.caption=captionInp.value; procSave(); });
+    urlBar.appendChild(urlInp);
+    wrap.appendChild(urlBar); wrap.appendChild(preview); wrap.appendChild(captionInp);
+    body.appendChild(wrap);
+    setTimeout(updateImg,0);
+
+  } else if(b.type==='code'){
+    const header = document.createElement('div');
+    header.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:var(--s3);border:1px solid var(--bd);border-bottom:none;border-radius:8px 8px 0 0';
+    const langInp = document.createElement('input');
+    langInp.type='text'; langInp.placeholder='langage (bash, javascript…)';
+    langInp.value=b.lang||'';
+    langInp.style.cssText='background:transparent;border:none;font-size:10.5px;color:var(--m2);font-family:inherit;outline:none;width:140px';
+    langInp.addEventListener('input',()=>{ b.lang=langInp.value; procSave(); });
+    const copyCodeBtn = document.createElement('button');
+    copyCodeBtn.innerHTML='<i class="ti ti-copy" style="font-size:11px"></i> Copier';
+    copyCodeBtn.style.cssText='background:none;border:none;cursor:pointer;color:var(--m2);font-size:10.5px;font-family:inherit;padding:3px 7px;border-radius:5px;transition:all .12s;display:flex;align-items:center;gap:4px';
+    copyCodeBtn.onmouseover=()=>{ copyCodeBtn.style.background='var(--s2)'; copyCodeBtn.style.color='var(--txt)'; };
+    copyCodeBtn.onmouseout=()=>{ copyCodeBtn.style.background=''; copyCodeBtn.style.color='var(--m2)'; };
+    const codeEl = document.createElement('pre');
+    codeEl.contentEditable='true'; codeEl.spellcheck=false;
+    codeEl.style.cssText='margin:0;padding:14px 16px;background:#1a1a2e;color:#e2e8f0;font-family:"Cascadia Code","Fira Code","Consolas",monospace;font-size:12px;line-height:1.6;border:1px solid var(--bd);border-radius:0 0 8px 8px;outline:none;white-space:pre;overflow-x:auto;min-height:60px;tab-size:2';
+    codeEl.textContent=b.content||'';
+    codeEl.addEventListener('input',()=>{ b.content=codeEl.textContent; procSave(); });
+    codeEl.addEventListener('keydown',(e)=>{ if(e.key==='Tab'){ e.preventDefault(); document.execCommand('insertText',false,'  '); } });
+    copyCodeBtn.onclick=()=>{ navigator.clipboard.writeText(codeEl.textContent||'').then(()=>{ copyCodeBtn.innerHTML='<i class="ti ti-check" style="font-size:11px"></i> Copié!'; setTimeout(()=>{ copyCodeBtn.innerHTML='<i class="ti ti-copy" style="font-size:11px"></i> Copier'; },2000); }); };
+    header.appendChild(langInp); header.appendChild(copyCodeBtn);
+    body.appendChild(header); body.appendChild(codeEl);
+
   } else if(b.type==='divider'){
     const hr = document.createElement('hr');
     hr.style.cssText = 'border:none;border-top:2px dashed var(--bd2);margin:12px 0';
@@ -6860,7 +6944,9 @@ function procAddBlock(type){
   const b = {id:_puid(),type};
   if(type==='checklist') b.items=[''];
   if(type==='table') b.rows=[['Étape','Description','Responsable'],['','','']];
-  if(type==='step') b.title=''; 
+  if(type==='step') b.title='';
+  if(type==='image') b.url='';
+  if(type==='code') b.content='';
   doc.blocks.push(b);
   procSave(); procRenderBlocks();
   const ed = document.getElementById('proc-editor');
@@ -6870,6 +6956,15 @@ function procAddBlock(type){
 function procDeleteBlock(id){
   const doc = procGetActive(); if(!doc) return;
   doc.blocks = doc.blocks.filter(b=>b.id!==id);
+  procSave(); procRenderBlocks();
+}
+
+function procDuplicateBlock(id){
+  const doc = procGetActive(); if(!doc) return;
+  const idx = doc.blocks.findIndex(b=>b.id===id); if(idx<0) return;
+  const clone = JSON.parse(JSON.stringify(doc.blocks[idx]));
+  clone.id = _puid();
+  doc.blocks.splice(idx+1,0,clone);
   procSave(); procRenderBlocks();
 }
 
@@ -6893,9 +6988,12 @@ function procExport(){
     if(b.type==='heading') out += '## '+b.content+'\n\n';
     else if(b.type==='step') out += stepNum+'. **'+(b.title||'Étape')+'**\n   '+(b.content||'')+'\n\n';
     else if(b.type==='text') out += (b.content||'')+'\n\n';
-    else if(b.type==='note') out += '> ⚠️ '+(b.content||'')+'\n\n';
+    else if(b.type==='note') out += '> 💡 '+(b.content||'')+'\n\n';
+    else if(b.type==='warning') out += '> ⚠️ '+(b.content||'')+'\n\n';
     else if(b.type==='checklist') out += (b.items||[]).map((t,ci)=>(b.checked?.[ci]?'- [x] ':'- [ ] ')+t).join('\n')+'\n\n';
     else if(b.type==='table') out += (b.rows||[]).map(r=>r.join(' | ')).join('\n')+'\n\n';
+    else if(b.type==='image') out += (b.url?`![${b.caption||'image'}](${b.url})`:'<!-- image -->')+'\n\n';
+    else if(b.type==='code') out += '```'+(b.lang||'')+'\n'+(b.content||'')+'\n```\n\n';
     else if(b.type==='divider') out += '---\n\n';
   });
   const blob=new Blob([out.trim()],{type:'text/plain'});
