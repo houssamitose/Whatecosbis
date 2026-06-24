@@ -5225,7 +5225,7 @@ function cycleBallotField(bid, field, el){
     el.textContent=pm.l;
     showToast('Priority: '+b.priority+' ✓');
   } else if(field==='product'){
-    const opts=['general',...products.map(p=>p.id)];
+    const opts=['general',...products.filter(p=>(p.status||'active')==='active').map(p=>p.id)];
     const idx=opts.indexOf(b.product||'general');
     b.product=opts[(idx+1)%opts.length];
     const isGeneral=b.product==='general';
@@ -8657,10 +8657,50 @@ function renderAvatarCard(pid, av){
         </button>
       </div>
 
-      <div class="av-card-foot">
-        <button class="tbn" title="Delete avatar" onclick="deleteAvatar('${pid}','${av.id}')"><i class="ti ti-trash" style="font-size:12px"></i></button>
+      <div class="av-card-foot" style="display:flex;align-items:center;justify-content:space-between">
+        <button class="tbn" title="Supprimer avatar" onclick="deleteAvatar('${pid}','${av.id}')"><i class="ti ti-trash" style="font-size:12px"></i></button>
+        <button class="btn btn-g" style="font-size:11px;padding:5px 10px;gap:5px" title="Copier les infos pour ChatGPT"
+          onclick="event.stopPropagation();copyAvatarForGPT('${pid}','${av.id}',this)">
+          <i class="ti ti-copy" style="font-size:12px"></i> Copier pour GPT
+        </button>
       </div>
     </div>`;
+}
+
+function copyAvatarForGPT(pid, avid, btn){
+  const p=products.find(x=>x.id===pid); if(!p) return;
+  const av=p.avatars.find(a=>a.id===avid); if(!av) return;
+  const lines=[];
+  lines.push(`🎯 AVATAR : ${av.name}`);
+  if(av.gender||av.age) lines.push(`Genre : ${av.gender||'–'} | Âge : ${av.age||'–'} ans`);
+  lines.push(`\n📦 PRODUIT : ${p.emoji||''} ${p.name}`);
+  if(av.desc){ lines.push(`\n📝 Description :\n${av.desc}`); }
+  if(av.motivations||av.objectives){ lines.push(`\n⭐ Motivations / Ce qui pousse à acheter :\n${av.motivations||av.objectives}`); }
+  if(av.objections){ lines.push(`\n🚫 Objections / Freins à l'achat :\n${av.objections}`); }
+  if(av.angles&&av.angles.length){
+    lines.push(`\n📐 Angles créatifs (${av.angles.length}) :`);
+    av.angles.forEach((ang,i)=>{
+      lines.push(`\n${i+1}. ${ang.name}`);
+      if(ang.rows&&ang.rows.length){
+        ang.rows.forEach(row=>{
+          const parts=[];
+          if(row.format||row.type) parts.push(`[${(row.format||row.type||'').toUpperCase()}]`);
+          if(row.hook) parts.push(`Hook : ${row.hook}`);
+          if(row.concept) parts.push(`Concept : ${row.concept}`);
+          if(row.script) parts.push(`Script : ${row.script}`);
+          if(row.inspiration) parts.push(`Ref : ${row.inspiration}`);
+          if(parts.length) lines.push(`   • ${parts.join(' | ')}`);
+        });
+      }
+    });
+  }
+  const text=lines.join('\n');
+  navigator.clipboard.writeText(text).then(()=>{
+    const orig=btn.innerHTML;
+    btn.innerHTML='<i class="ti ti-check" style="font-size:12px"></i> Copié !';
+    btn.style.color='var(--green)';
+    setTimeout(()=>{btn.innerHTML=orig;btn.style.color='';},2000);
+  }).catch(()=>showToast('Erreur copie'));
 }
 
 function renderAnglesView(p, av){
@@ -9050,7 +9090,7 @@ function getProductTagBtn(tid, productId){
 
 function cycleTaskProduct(tid, el){
   const t=tasks.find(x=>x.id===tid); if(!t) return;
-  const opts=['general',...products.map(p=>p.id)];
+  const opts=['general',...products.filter(p=>(p.status||'active')==='active').map(p=>p.id)];
   const cur=t.product||'general';
   const idx=opts.indexOf(cur);
   t.product=opts[(idx+1)%opts.length];
@@ -9068,7 +9108,7 @@ function cycleTaskProduct(tid, el){
 function populateProductSelect(selectId, currentVal){
   const sel=document.getElementById(selectId); if(!sel) return;
   sel.innerHTML=`<option value="general">🏷 General</option>`;
-  products.forEach(p=>{
+  products.filter(p=>(p.status||'active')==='active').forEach(p=>{
     const opt=document.createElement('option');
     opt.value=p.id;
     opt.textContent=`${p.emoji} ${p.name}`;
