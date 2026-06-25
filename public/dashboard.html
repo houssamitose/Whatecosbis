@@ -599,6 +599,32 @@ tbody td{padding:10px 12px}
 .av-add-angle-btn:hover{border-color:var(--acc);color:var(--acc);background:rgba(91,80,240,.04)}
 .ang-add-row{padding:10px 14px;display:flex;gap:8px;border-top:1px solid var(--bd);background:var(--s2)}
 
+/* ── Angle Blocks (one card per angle) ── */
+.angle-blocks{display:flex;flex-direction:column;gap:14px}
+.angle-block{background:var(--s1);border:1px solid var(--bd);border-radius:13px;overflow:hidden;box-shadow:var(--sh);transition:box-shadow .13s}
+.angle-block:hover{box-shadow:var(--sh2)}
+.angle-block-head{display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--bd);background:linear-gradient(to right,var(--s2),var(--s1))}
+.angle-block-num{width:26px;height:26px;border-radius:7px;background:var(--acc);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.angle-block-name{flex:1;font-size:13px;font-weight:800;color:var(--txt);outline:none;cursor:text;border-radius:6px;padding:3px 7px;transition:background .12s;min-width:0;-webkit-user-select:text;user-select:text}
+.angle-block-name:hover{background:var(--s3)}
+.angle-block-name:focus{background:var(--s1);box-shadow:0 0 0 2px var(--acc)}
+.angle-block-name:empty:before{content:'Nom de l\'angle…';color:var(--m2);font-style:italic;pointer-events:none}
+.angle-block-meta{font-size:10px;color:var(--m1);font-weight:600;white-space:nowrap;background:var(--s3);padding:3px 8px;border-radius:20px}
+.angle-block-foot{padding:9px 14px;background:var(--s2);border-top:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between}
+.abt{width:100%;border-collapse:collapse;font-size:12px}
+.abt thead th{padding:8px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.4px;color:var(--m2);background:var(--s2);border-bottom:1px solid var(--bd);text-transform:uppercase;white-space:nowrap}
+.abt tbody tr{border-bottom:1px solid var(--bd);transition:background .1s}
+.abt tbody tr:last-child{border-bottom:none}
+.abt tbody tr:hover{background:rgba(91,80,240,.025)}
+.abt tbody tr:hover .ang-row-hover-show{opacity:1!important}
+.abt tbody td{padding:9px 12px;vertical-align:middle}
+.ang-hook-cell{outline:none;cursor:text;border-radius:5px;padding:4px 6px;transition:background .12s;font-size:12px;font-weight:600;color:var(--txt);-webkit-user-select:text;user-select:text;min-height:28px;word-break:break-word;line-height:1.5;display:block;width:100%}
+.ang-hook-cell:hover{background:var(--s3)}
+.ang-hook-cell:focus{background:var(--s1);box-shadow:0 0 0 2px var(--acc)}
+.ang-hook-cell:empty:before{content:attr(data-placeholder);color:var(--m2);font-style:italic;pointer-events:none;font-weight:400}
+.abt-link-cell{display:flex;align-items:center;gap:5px;overflow:hidden}
+.abt-link-cell .ang-script-placeholder{font-size:11px}
+
 /* ── SpaceSeller availability toggle ── */
 .ss-avail-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;border:none;font-size:11px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all .15s;white-space:nowrap}
 .ss-avail-btn.not-available{background:var(--s3);color:var(--m1)}
@@ -8802,131 +8828,152 @@ function copyAvatarForGPT(pid, avid, btn){
 function renderAnglesView(p, av){
   const initials = av.name.substring(0,2).toUpperCase();
   const col = avColor(av.name);
-  const photoHTML = av.photo ? `<img src="${av.photo}">` : `<span style="color:#fff;font-size:16px;font-weight:800">${initials}</span>`;
+  const photoHTML = av.photo
+    ? `<img src="${av.photo}">`
+    : `<span style="color:#fff;font-size:16px;font-weight:800">${initials}</span>`;
 
-  const angBlocks = av.angles.map((ang,ai)=>{
-    const fmtMap = {
-      video:{cls:'ang-fmt-video',icon:'ti-video',label:'Vidéo'},
-      image:{cls:'ang-fmt-image',icon:'ti-photo',label:'Image'},
-      carousel:{cls:'ang-fmt-carousel',icon:'ti-stack-2',label:'Carousel'},
-    };
-    const rows = ang.rows.map(row=>{
-      /* backward compat: old type field */
-      const fmt = row.format || (row.type==='image'?'image':row.type==='carousel'?'carousel':'video');
-      const fm = fmtMap[fmt]||fmtMap.video;
-      const hook = row.hook||'';
-      const concept = row.concept||'';
-      const script = row.script||row.voix||'';
-      const inspo = row.inspiration||row.link||'';
-      const inspoLink = inspo ? `<a href="${xss(inspo)}" target="_blank" style="color:var(--acc);flex-shrink:0;display:inline-flex;align-items:center;margin-left:4px" title="Ouvrir"><i class="ti ti-external-link" style="font-size:12px"></i></a>` : '';
-      const sc = _STATUS_CFG[row.status||(row.launched?'live':'idea')]||_STATUS_CFG.idea;
-      return `<tr class="ang-tr" data-ang="${ang.id}" data-row="${row.id}">
-        <td class="ang-td" style="text-align:center;width:86px">
-          <span class="ang-fmt-badge ${fm.cls}" title="Cliquer pour changer" style="cursor:pointer"
-            onclick="cycleRowFmt('${p.id}','${av.id}','${ang.id}','${row.id}')">
-            <i class="ti ${fm.icon}"></i>${fm.label}
+  const TYPE_MAP = {video:{c:'vid',i:'ti-video',l:'Vidéo'}, image:{c:'img',i:'ti-photo',l:'Image'}};
+
+  const angleCards = av.angles.map((ang, ai)=>{
+    const rowsHTML = ang.rows.map(row=>{
+      const tm = TYPE_MAP[row.type] || TYPE_MAP.video;
+      return `<tr data-ang="${ang.id}" data-row="${row.id}">
+        <td style="width:92px;white-space:nowrap">
+          <span class="ang-type-badge ${tm.c} ang-type-btn" title="Cliquer pour changer le format"
+            onclick="cycleRowType('${p.id}','${av.id}','${ang.id}','${row.id}')">
+            <i class="ti ${tm.i}">${tm.l}<i class="ti ti-refresh" style="font-size:9px;opacity:.45;margin-left:2px"></i>
           </span>
         </td>
-        <td class="ang-td" style="padding:0">
-          <input class="ang-cell-input" type="text" placeholder="Hook / accroche…"
-            value="${xss(hook)}"
-            onblur="saveRowFmtField(this,'${p.id}','${av.id}','${ang.id}','${row.id}','hook')"
-            onkeydown="if(event.key==='Enter'){this.blur()}">
+        <td style="min-width:170px;max-width:240px">
+          <div class="ang-hook-cell"
+            contenteditable="true" spellcheck="false"
+            data-ang="${ang.id}" data-row="${row.id}" data-field="hook"
+            onblur="saveRowField(this,'${p.id}','${av.id}')"
+            data-placeholder="Hook / Concept…"
+          >${xss(row.hook||'')}</div>
         </td>
-        <td class="ang-td" style="padding:0">
-          <input class="ang-cell-input" type="text" placeholder="Concept visuel…"
-            value="${xss(concept)}"
-            onblur="saveRowFmtField(this,'${p.id}','${av.id}','${ang.id}','${row.id}','concept')"
-            onkeydown="if(event.key==='Enter'){this.blur()}">
+        <td style="min-width:190px">
+          <div class="ang-script-cell">
+            <div class="ang-script-preview" onclick="openScriptModal('${p.id}','${av.id}','${ang.id}','${row.id}')">
+              <span class="ang-script-text" id="sp-${row.id}">${xss(row.script||'')}</span>
+              ${!row.script?`<span class="ang-script-placeholder">Écrire le script…</span>`:''}
+            </div>
+            <button class="ang-script-open tbn" onclick="openScriptModal('${p.id}','${av.id}','${ang.id}','${row.id}')">
+              <i class="ti ti-external-link" style="font-size:12px"></i>
+            </button>
+          </div>
         </td>
-        <td class="ang-td" style="padding:0">
-          <input class="ang-cell-input" type="text" placeholder="Script / voix off…"
-            value="${xss(script)}"
-            onblur="saveRowFmtField(this,'${p.id}','${av.id}','${ang.id}','${row.id}','script')"
-            onkeydown="if(event.key==='Enter'){this.blur()}">
+        <td style="width:150px">
+          <div class="abt-link-cell ang-inspo-cell">
+            <div class="ang-link-preview"
+              onclick="openLinkModal('${p.id}','${av.id}','${ang.id}','${row.id}','link')"
+              style="flex:1;min-width:0;cursor:pointer;overflow:hidden;display:flex;align-items:center;gap:4px">
+              ${row.link
+                ?`<i class="ti ti-link" style="font-size:10px;flex-shrink:0;color:var(--blue)"></i><span class="ang-link-text" style="color:var(--blue)">${xss(row.link)}</span>`
+                :`<span class="ang-script-placeholder">Inspiration…</span>`}
+            </div>
+            <button class="tbn ang-row-hover-show" style="opacity:0;transition:opacity .12s"
+              onclick="openLinkModal('${p.id}','${av.id}','${ang.id}','${row.id}','link')">
+              <i class="ti ti-pencil" style="font-size:11px"></i>
+            </button>
+          </div>
         </td>
-        <td class="ang-td" style="padding:0 4px">
-          <input class="ang-cell-input" type="url" placeholder="https://…"
-            value="${xss(inspo)}"
-            onblur="saveRowFmtField(this,'${p.id}','${av.id}','${ang.id}','${row.id}','inspiration')"
-            onkeydown="if(event.key==='Enter'){this.blur()}"
-            style="width:calc(100% - 20px)">${inspoLink}
+        <td style="width:150px">
+          <div class="abt-link-cell ang-creative-cell">
+            <div class="ang-link-preview"
+              onclick="openLinkModal('${p.id}','${av.id}','${ang.id}','${row.id}','creative')"
+              style="flex:1;min-width:0;cursor:pointer;overflow:hidden;display:flex;align-items:center;gap:4px">
+              ${row.creative
+                ?`<i class="ti ti-link" style="font-size:10px;flex-shrink:0;color:var(--green)"></i><span class="ang-link-text" style="color:var(--green)">${xss(row.creative)}</span>`
+                :`<span class="ang-script-placeholder">Créatif…</span>`}
+            </div>
+            <button class="tbn ang-star-btn ${isBestCreative(p,row.creative)?'active':''}"
+              onclick="toggleRowBestCreative('${p.id}','${av.id}','${ang.id}','${row.id}',this)">
+              <i class="ti ti-star" style="font-size:12px"></i>
+            </button>
+          </div>
         </td>
-        <td class="ang-td" style="padding:5px 8px;width:112px">
-          <button class="ang-status-btn ${sc.cls}" title="Cliquer pour changer"
-            onclick="cycleRowStatus('${p.id}','${av.id}','${ang.id}','${row.id}',this)">
-            <i class="ti ${sc.icon}"></i>${sc.label}
-          </button>
-        </td>
-        <td class="ang-td" style="text-align:center;width:36px;padding:0">
-          <button class="tbn" title="Supprimer"
-            onmouseover="this.style.color='var(--red)';this.style.background='var(--red2)'"
-            onmouseout="this.style.color='var(--m2)';this.style.background=''"
-            onclick="deleteScriptRow('${p.id}','${av.id}','${ang.id}','${row.id}')">
-            <i class="ti ti-trash" style="font-size:12px"></i>
-          </button>
+        <td style="width:230px">
+          <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+            <button class="ang-valid-btn ${row.validated?'validated':'not-validated'}"
+              id="vbtn-${row.id}"
+              onclick="toggleValidation('${p.id}','${av.id}','${ang.id}','${row.id}',this)">
+              <i class="ti ti-${row.validated?'circle-check':'circle-x'}"></i>
+              ${row.validated?'Validé':'Non validé'}
+            </button>
+            <button class="ang-launch-btn ${row.launched?'launched':'not-launched'}"
+              id="lbtn-${row.id}"
+              onclick="toggleLaunched('${p.id}','${av.id}','${ang.id}','${row.id}',this)">
+              <i class="ti ti-${row.launched?'rocket':'rocket-off'}"></i>
+              ${row.launched?'Lancé':'Non lancé'}
+            </button>
+            <button class="tbn ang-row-hover-show" style="opacity:0;transition:opacity .12s;color:var(--red);margin-left:auto"
+              onclick="deleteScriptRow('${p.id}','${av.id}','${ang.id}','${row.id}')">
+              <i class="ti ti-trash" style="font-size:13px"></i>
+            </button>
+          </div>
         </td>
       </tr>`;
     }).join('');
 
-    const emptyRow = `<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--m2);font-size:12px">Aucune ligne — clique <strong>+ Ligne</strong></td></tr>`;
-    return `<div class="ang-block">
-      <div class="ang-block-head">
-        <div class="ang-block-num">${ai+1}</div>
-        <div class="ang-block-name" contenteditable="true" spellcheck="false"
+    const rowCount = ang.rows.length;
+    return `
+    <div class="angle-block" id="angblock-${ang.id}">
+      <div class="angle-block-head">
+        <div class="angle-block-num">${ai+1}</div>
+        <div class="angle-block-name"
+          contenteditable="true" spellcheck="false"
           data-ang="${ang.id}"
           onblur="saveAngField(this,'${p.id}','${av.id}')"
-          onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
         >${xss(ang.name)}</div>
-        <button class="btn btn-g" style="font-size:11px;padding:5px 9px" onclick="addScriptRow('${p.id}','${av.id}','${ang.id}')">
-          <i class="ti ti-plus"></i>Ligne
-        </button>
-        <button class="tbn" style="color:var(--m2);padding:4px 6px;border-radius:6px;font-size:12px;transition:all .12s"
-          onmouseover="this.style.color='var(--red)';this.style.background='var(--red2)'"
-          onmouseout="this.style.color='var(--m2)';this.style.background=''"
+        <span class="angle-block-meta">${rowCount} ligne${rowCount>1?'s':''}</span>
+        <button class="tbn" style="color:var(--m2);transition:color .12s"
+          onmouseenter="this.style.color='var(--red)'" onmouseleave="this.style.color='var(--m2)'"
           onclick="deleteAngle('${p.id}','${av.id}','${ang.id}')">
-          <i class="ti ti-trash"></i>
+          <i class="ti ti-trash" style="font-size:13px"></i>
         </button>
       </div>
       <div style="overflow-x:auto">
-      <table class="ang-table">
-        <colgroup>
-          <col style="width:86px"><col><col><col><col style="width:130px"><col style="width:112px"><col style="width:36px">
-        </colgroup>
-        <thead>
-          <tr class="ang-thead-row">
-            <th class="ang-th" style="text-align:center">Format</th>
-            <th class="ang-th">Hook</th>
-            <th class="ang-th">Concept</th>
-            <th class="ang-th">Script</th>
-            <th class="ang-th">Inspiration</th>
-            <th class="ang-th" style="text-align:center">Statut</th>
-            <th class="ang-th"></th>
-          </tr>
-        </thead>
-        <tbody>${rows||emptyRow}</tbody>
-      </table>
+        <table class="abt">
+          <thead>
+            <tr>
+              <th>Format</th><th>Hook / Concept</th><th>Script</th>
+              <th>Inspiration</th><th>Créatif</th><th>Statut</th>
+            </tr>
+          </thead>
+          <tbody id="angbody-${ang.id}">${rowsHTML}</tbody>
+        </table>
+      </div>
+      <div class="angle-block-foot">
+        <button class="ang-add-script-btn" onclick="addScriptRow('${p.id}','${av.id}','${ang.id}')">
+          <i class="ti ti-plus"></i> Ajouter une ligne
+        </button>
+        <span style="font-size:10px;color:var(--m2);font-weight:500">${rowCount} créatif${rowCount>1?'s':''}</span>
       </div>
     </div>`;
   }).join('');
 
   return `
     <div class="pp-head">
-      <button class="angles-back" onclick="closeAngles()"><i class="ti ti-arrow-left"></i>Retour Avatars</button>
+      <button class="angles-back" onclick="closeAngles()"><i class="ti ti-arrow-left"></i>Retour aux Avatars</button>
       <div class="pp-head-img" style="background:${col}">${photoHTML}</div>
       <div>
         <div class="pp-head-name">${xss(av.name)} · ${xss(av.gender)} · ${xss(av.age)} ans</div>
         <div class="pp-head-sub">${xss(p.name)} · ${av.angles.length} angle${av.angles.length!==1?'s':''}</div>
       </div>
       <div class="pp-head-r">
-        <button class="btn btn-p" onclick="addAngle('${p.id}','${av.id}')" style="font-size:11px;padding:6px 11px">
-          <i class="ti ti-plus"></i>Ajouter Angle
+        <button class="btn btn-p" onclick="addAngle('${p.id}','${av.id}')" style="font-size:11px;padding:7px 13px">
+          <i class="ti ti-plus"></i> Ajouter un Angle
         </button>
       </div>
     </div>
     <div class="pp-body">
-      <div class="angles-view" style="padding:16px">
-        ${angBlocks||`<div style="text-align:center;padding:40px 20px;color:var(--m2)"><i class="ti ti-layout-grid" style="font-size:32px;display:block;margin-bottom:10px;opacity:.3"></i><p style="font-size:13px;font-weight:600">Aucun angle</p><p style="font-size:12px;margin-top:6px">Clique <strong>Ajouter Angle</strong> pour commencer</p></div>`}
+      <div class="angle-blocks" id="angles-tbl">
+        ${angleCards||`<div style="text-align:center;padding:48px 24px;color:var(--m2)">
+          <i class="ti ti-bulb" style="font-size:36px;display:block;margin-bottom:14px;opacity:.35"></i>
+          <div style="font-size:13px;font-weight:600">Pas encore d'angles</div>
+          <div style="font-size:12px;margin-top:4px">Cliquez <strong style="color:var(--acc)">Ajouter un Angle</strong> pour commencer</div>
+        </div>`}
       </div>
     </div>`;
 }
@@ -9170,19 +9217,17 @@ function addScriptRow(pid, avid, angId){
   const av=p.avatars.find(a=>a.id===avid); if(!av) return;
   const ang=av.angles.find(a=>a.id===angId); if(!ang) return;
   const ts=Date.now();
-  ang.rows.push({id:'r'+ts,format:'video',type:'video',hook:'',concept:'',inspiration:'',link:'',script:'',status:'idea',launched:false});
-  saveProducts(); renderProductPanel(); showToast('Script row added ✓');
+  ang.rows.push({id:'r'+ts,type:'video',link:'',script:'',creative:'',hook:'',validated:false,launched:false});
+  saveProducts(); renderProductPanel(); showToast('Ligne ajoutée ✓');
 }
 
 function deleteScriptRow(pid, avid, angId, rowId){
   const p=products.find(x=>x.id===pid); if(!p) return;
   const av=p.avatars.find(a=>a.id===avid); if(!av) return;
   const ang=av.angles.find(a=>a.id===angId); if(!ang) return;
-  if(ang.rows.length<=1){ showToast('Need at least one row'); return; }
   ang.rows=ang.rows.filter(r=>r.id!==rowId);
-  saveProducts(); renderProductPanel(); showToast('Row removed');
+  saveProducts(); renderProductPanel(); showToast('Ligne supprimée');
 }
-
 function getProductTag(productId){
   if(!productId||productId==='general') return `<span class="task-prod-tag general">🏷 General</span>`;
   const p=products.find(x=>x.id===productId);
@@ -9408,14 +9453,13 @@ function deleteAvatar(pid, avid){
 function addAngle(pid, avid){
   const p=products.find(x=>x.id===pid); if(!p) return;
   const av=p.avatars.find(a=>a.id===avid); if(!av) return;
-  const n=av.angles.length+1; const ts=Date.now();
+  const n=av.angles.length+1;
+  const ts=Date.now();
   av.angles.push({id:'ang'+ts,name:'Angle #'+n,rows:[
-    {id:'r'+ts+'a',format:'video',type:'video',hook:'',concept:'',inspiration:'',link:'',script:'',creative:'',status:'idea',launched:false},
-    {id:'r'+ts+'b',format:'image',type:'image',hook:'',concept:'',inspiration:'',link:'',script:'',creative:'',status:'idea',launched:false},
+    {id:'r'+ts+'a',type:'video',link:'',script:'',creative:'',hook:'',validated:false,launched:false},
   ]});
   saveProducts(); renderProductPanel(); showToast('Angle ajouté ✓');
 }
-
 /* ── Script Editor Modal ── */
 let _scriptCtx = null; // {pid, avid, angId, rowId}
 
