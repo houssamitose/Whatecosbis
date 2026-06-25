@@ -456,42 +456,42 @@ tbody td{padding:10px 12px}
 
 .av-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
 
+/* ── Avatar Cards ── */
 .av-card{
-  background:var(--s1);border:1.5px solid var(--bd);border-radius:14px;
-  padding:16px;cursor:pointer;
+  background:var(--s1);border:1.5px solid var(--bd);border-radius:16px;
   transition:all .16s;box-shadow:var(--sh);
-  position:relative;overflow:hidden;
+  position:relative;overflow:hidden;display:flex;flex-direction:column;
 }
-.av-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;opacity:0;transition:opacity .18s}
 .av-card:hover{border-color:var(--acc);box-shadow:var(--sh2);transform:translateY(-2px)}
-.av-card:hover::after{opacity:1}
-
-.av-card-top{display:flex;align-items:flex-start;gap:12px;margin-bottom:12px}
-.av-photo{width:62px;height:62px;border-radius:12px;background:var(--s3);flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:var(--m2)}
+.av-card-accent{height:3px;transition:opacity .16s;opacity:.55}
+.av-card:hover .av-card-accent{opacity:1}
+.av-card-body{padding:15px 16px 12px;display:flex;flex-direction:column;gap:11px;flex:1}
+.av-card-top{display:flex;align-items:center;gap:12px}
+.av-photo{width:50px;height:50px;border-radius:12px;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff}
 .av-photo img{width:100%;height:100%;object-fit:cover}
-.av-name{font-size:14px;font-weight:800;letter-spacing:-.2px;margin-bottom:3px}
-.av-meta{display:flex;flex-direction:column;gap:3px}
-.av-meta-row{font-size:11px;color:var(--m1);font-weight:500;display:flex;align-items:center;gap:4px}
-.av-meta-row i{font-size:11px;color:var(--m2)}
+.av-name{font-size:14px;font-weight:800;letter-spacing:-.2px;margin-bottom:4px;color:var(--txt)}
+.av-meta{display:flex;gap:5px;flex-wrap:wrap}
+.av-meta-chip{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;background:var(--s3);font-size:10px;font-weight:600;color:var(--m1);cursor:pointer;transition:background .12s;user-select:none;border:none;font-family:inherit}
+.av-meta-chip:hover{background:var(--s4);color:var(--txt)}
+.av-meta-chip i{font-size:10px}
+.av-angle-count{display:inline-flex;align-items:center;gap:4px;margin-left:auto;flex-shrink:0;padding:4px 10px;border-radius:8px;background:rgba(91,80,240,.08);color:var(--acc);font-size:11px;font-weight:700}
 
-.av-divider{height:1px;background:var(--bd);margin-bottom:10px}
-.av-field-lbl{font-size:10px;font-weight:700;color:var(--acc);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
-.av-field-val{font-size:11.5px;color:var(--m1);line-height:1.55;margin-bottom:10px;font-weight:500}
-.av-field-val:last-child{margin-bottom:0}
+.av-divider{height:1px;background:var(--bd)}
+.av-field-lbl{font-size:10px;font-weight:700;color:var(--acc);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}
+.av-field-val{font-size:11.5px;color:var(--m1);line-height:1.5;font-weight:500}
 
-.av-card-foot{margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between}
-.av-card-cta{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--acc);background:rgba(91,80,240,.08);padding:5px 10px;border-radius:7px;transition:background .12s;cursor:pointer}
-.av-card:hover .av-card-cta{background:rgba(91,80,240,.15)}
+.av-card-foot{padding:10px 16px 14px;border-top:1px solid var(--bd);display:flex;align-items:center;gap:8px}
+.av-open-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:9px 14px;border-radius:10px;background:var(--acc);color:#fff;font-size:12px;font-weight:700;cursor:pointer;border:none;font-family:'Plus Jakarta Sans',sans-serif;transition:all .13s}
+.av-open-btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.av-del-btn{width:34px;height:34px;border-radius:9px;flex-shrink:0;background:var(--s2);border:1.5px solid var(--bd);color:var(--m2);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .12s;font-family:inherit}
+.av-del-btn:hover{background:var(--red2);border-color:var(--red);color:var(--red)}
 
-/* Inline editable fields on avatar card */
+/* Inline editable */
 .av-editable{border-radius:5px;padding:2px 4px;margin:-2px -4px;outline:none;transition:background .12s,box-shadow .12s;cursor:text;-webkit-user-select:text;user-select:text}
 .av-editable:hover{background:var(--s3)}
 .av-editable:focus{background:var(--s1);box-shadow:0 0 0 2px var(--acc);cursor:text}
 .av-editable:empty:before{content:attr(data-placeholder);color:var(--m2);font-style:italic;pointer-events:none}
-.av-age-inline{display:inline;font-size:11px;font-weight:500;color:var(--m1);min-width:16px}
-.av-gender-btn{cursor:pointer;border-radius:5px;padding:2px 5px;margin:-2px -5px;transition:background .12s,transform .1s;user-select:none}
-.av-gender-btn:hover{background:var(--s3);transform:scale(1.04)}
-.av-gender-btn:active{transform:scale(.96)}
+.av-age-inline{display:inline;font-size:10px;font-weight:600;color:var(--m1);min-width:16px}
 
 /* ── Angles view ── */
 .angles-view{}
@@ -8432,7 +8432,7 @@ function renderAvatarsView(p){
       </div>
     </div>
     <div class="pp-body">
-      <div class="pp-section-label"><i class="ti ti-users"></i>Target Avatars — click to view angles</div>
+      <div class="pp-section-label"><i class="ti ti-users"></i>Avatars — cliquer sur un avatar pour gérer ses angles</div>
       <div class="av-grid">
         ${p.avatars.map(av=>renderAvatarCard(p.id, av)).join('')}
         <div class="av-card" style="border-style:dashed;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;min-height:180px;cursor:pointer" onclick="addAvatar('${p.id}')">
@@ -8693,138 +8693,87 @@ function renderAvatarCard(pid, av){
   const col = avColor(av.name);
   const photoHTML = av.photo
     ? `<img src="${av.photo}" alt="${xss(av.name)}">`
-    : `<span style="color:#fff;font-size:20px;font-weight:800">${initials}</span>`;
+    : `<span style="color:#fff;font-size:18px;font-weight:800">${initials}</span>`;
 
-  // Gender cycles Female → Male → Female
   const genderIcon = av.gender==='Female' ? 'ti-gender-female' : 'ti-gender-male';
+  const angCount = av.angles.length;
+  const totalRows = av.angles.reduce((s,a)=>s+(a.rows||[]).length,0);
 
   return `
     <div class="av-card" id="avc-${av.id}">
-      <div class="av-card-top">
-        <div class="av-photo" style="background:${col}">${photoHTML}</div>
-        <div style="flex:1;min-width:0">
-          <div class="av-name av-editable"
-            contenteditable="true" spellcheck="false"
-            title="Click to edit name"
-            onblur="saveAvField(this,'${pid}','${av.id}','name')"
-            onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
-            onclick="event.stopPropagation()"
-          >${xss(av.name)}</div>
-          <div class="av-meta">
-            <div class="av-meta-row av-gender-btn" title="Click to toggle gender"
-              onclick="event.stopPropagation();cycleAvGender('${pid}','${av.id}')">
-              <i class="ti ${genderIcon}" id="av-gender-icon-${av.id}"></i>
-              <span id="av-gender-txt-${av.id}">${xss(av.gender)}</span>
-            </div>
-            <div class="av-meta-row">
-              <i class="ti ti-cake"></i>
-              <span class="av-editable av-age-inline"
-                contenteditable="true" spellcheck="false"
-                title="Click to edit age"
-                onblur="saveAvField(this,'${pid}','${av.id}','age')"
-                onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
-                onclick="event.stopPropagation()"
-              >${xss(av.age)}</span>
-              <span style="color:var(--m2);font-size:11px"> ans</span>
+      <div class="av-card-accent" style="background:linear-gradient(90deg,${col},${col}66)"></div>
+      <div class="av-card-body">
+        <div class="av-card-top">
+          <div class="av-photo" style="background:${col}">${photoHTML}</div>
+          <div style="flex:1;min-width:0">
+            <div class="av-name av-editable"
+              contenteditable="true" spellcheck="false"
+              title="Cliquer pour modifier"
+              onblur="saveAvField(this,'${pid}','${av.id}','name')"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
+              onclick="event.stopPropagation()"
+            >${xss(av.name)}</div>
+            <div class="av-meta">
+              <button class="av-meta-chip" title="Cliquer pour changer le genre"
+                onclick="event.stopPropagation();cycleAvGender('${pid}','${av.id}')">
+                <i class="ti ${genderIcon}" id="av-gender-icon-${av.id}"></i>
+                <span id="av-gender-txt-${av.id}">${xss(av.gender)}</span>
+              </button>
+              <span class="av-meta-chip" style="cursor:default">
+                <i class="ti ti-cake"></i>
+                <span class="av-editable av-age-inline"
+                  contenteditable="true" spellcheck="false"
+                  title="Cliquer pour modifier l'age"
+                  onblur="saveAvField(this,'${pid}','${av.id}','age')"
+                  onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
+                  onclick="event.stopPropagation()"
+                >${xss(av.age)}</span>&nbsp;ans
+              </span>
             </div>
           </div>
+          <span class="av-angle-count" title="${totalRows} creatifs au total">
+            <i class="ti ti-layout-grid" style="font-size:11px"></i>
+            ${angCount} angle${angCount!==1?'s':''}
+          </span>
+        </div>
+
+        <div class="av-divider"></div>
+
+        <div>
+          <div class="av-field-lbl">Description</div>
+          <div class="av-field-val av-editable"
+            contenteditable="true" spellcheck="false"
+            data-placeholder="Decrivez cet avatar..."
+            title="Cliquer pour modifier"
+            onblur="saveAvField(this,'${pid}','${av.id}','desc')"
+            onclick="event.stopPropagation()"
+          >${xss(av.desc||'')}</div>
+        </div>
+
+        <div>
+          <div class="av-field-lbl">Motivations / Objectifs</div>
+          <div class="av-field-val av-editable"
+            contenteditable="true" spellcheck="false"
+            data-placeholder="Motivations, douleurs, objections..."
+            title="Cliquer pour modifier"
+            onblur="saveAvField(this,'${pid}','${av.id}','objectives')"
+            onclick="event.stopPropagation()"
+          >${xss(av.objectives||'')}</div>
         </div>
       </div>
-      <div class="av-divider"></div>
-      <div class="av-field-lbl">Description</div>
-      <div class="av-field-val av-editable"
-        contenteditable="true" spellcheck="false"
-        data-placeholder="Add description…"
-        title="Click to edit"
-        onblur="saveAvField(this,'${pid}','${av.id}','desc')"
-        onclick="event.stopPropagation()"
-      >${xss(av.desc||'')}</div>
-      <div class="av-field-lbl" style="color:var(--green)"><i class="ti ti-star" style="font-size:10px"></i> Motivations</div>
-      <div class="av-field-val av-editable"
-        contenteditable="true" spellcheck="false"
-        data-placeholder="Ce qui pousse à acheter…"
-        title="Click to edit"
-        onblur="saveAvField(this,'${pid}','${av.id}','motivations')"
-        onclick="event.stopPropagation()"
-      >${xss(av.motivations||av.objectives||'')}</div>
-      <div class="av-field-lbl" style="color:var(--red);margin-top:8px"><i class="ti ti-shield-x" style="font-size:10px"></i> Objections</div>
-      <div class="av-field-val av-editable"
-        contenteditable="true" spellcheck="false"
-        data-placeholder="Ce qui bloque l'achat…"
-        title="Click to edit"
-        onblur="saveAvField(this,'${pid}','${av.id}','objections')"
-        onclick="event.stopPropagation()"
-      >${xss(av.objections||'')}</div>
 
-      <div class="av-divider" style="margin-top:10px"></div>
-      <div class="av-field-lbl" style="margin-bottom:8px"><i class="ti ti-layout-grid" style="font-size:11px;color:var(--acc)"></i> Angles</div>
-      <div class="av-angles-list" id="av-angles-${av.id}">
-        ${av.angles.map((ang,i)=>`
-          <div class="av-angle-pill" style="display:flex;align-items:center;gap:6px;margin-bottom:5px"
-            title="Cliquer pour ouvrir le tableau"
-            onclick="event.stopPropagation();openAvatar('${pid}','${av.id}')">
-            <span class="av-angle-num">${i+1}</span>
-            <div class="av-angle-name"
-              style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer"
-            >${xss(ang.name)||'Angle '+(i+1)}</div>
-            <button class="av-angle-edit tbn" title="Renommer" onclick="event.stopPropagation();renameAngleInline(this,'${pid}','${av.id}','${ang.id}')">
-              <i class="ti ti-pencil" style="font-size:10px"></i>
-            </button>
-            <button class="av-angle-del tbn" title="Supprimer" onclick="event.stopPropagation();deleteAngle('${pid}','${av.id}','${ang.id}')">
-              <i class="ti ti-x" style="font-size:10px"></i>
-            </button>
-          </div>`).join('')}
-        <button class="av-add-angle-btn" onclick="event.stopPropagation();addAngleFromCard('${pid}','${av.id}')">
-          <i class="ti ti-plus"></i> Add Angle
+      <div class="av-card-foot">
+        <button class="av-open-btn" onclick="openAvatar('${pid}','${av.id}')">
+          <i class="ti ti-layout-grid" style="font-size:14px"></i>
+          Voir les Angles
+          <i class="ti ti-arrow-right" style="font-size:13px;margin-left:2px"></i>
         </button>
-      </div>
-
-      <div class="av-card-foot" style="display:flex;align-items:center;justify-content:space-between">
-        <button class="tbn" title="Supprimer avatar" onclick="deleteAvatar('${pid}','${av.id}')"><i class="ti ti-trash" style="font-size:12px"></i></button>
-        <button class="btn btn-g" style="font-size:11px;padding:5px 10px;gap:5px" title="Copier les infos pour ChatGPT"
-          onclick="event.stopPropagation();copyAvatarForGPT('${pid}','${av.id}',this)">
-          <i class="ti ti-copy" style="font-size:12px"></i> Copier pour GPT
+        <button class="av-del-btn" title="Supprimer l'avatar" onclick="event.stopPropagation();deleteAvatar('${pid}','${av.id}')">
+          <i class="ti ti-trash" style="font-size:13px"></i>
         </button>
       </div>
     </div>`;
 }
-
-function copyAvatarForGPT(pid, avid, btn){
-  const p=products.find(x=>x.id===pid); if(!p) return;
-  const av=p.avatars.find(a=>a.id===avid); if(!av) return;
-  const lines=[];
-  lines.push(`🎯 AVATAR : ${av.name}`);
-  if(av.gender||av.age) lines.push(`Genre : ${av.gender||'–'} | Âge : ${av.age||'–'} ans`);
-  lines.push(`\n📦 PRODUIT : ${p.emoji||''} ${p.name}`);
-  if(av.desc){ lines.push(`\n📝 Description :\n${av.desc}`); }
-  if(av.motivations||av.objectives){ lines.push(`\n⭐ Motivations / Ce qui pousse à acheter :\n${av.motivations||av.objectives}`); }
-  if(av.objections){ lines.push(`\n🚫 Objections / Freins à l'achat :\n${av.objections}`); }
-  if(av.angles&&av.angles.length){
-    lines.push(`\n📐 Angles créatifs (${av.angles.length}) :`);
-    av.angles.forEach((ang,i)=>{
-      lines.push(`\n${i+1}. ${ang.name}`);
-      if(ang.rows&&ang.rows.length){
-        ang.rows.forEach(row=>{
-          const parts=[];
-          if(row.format||row.type) parts.push(`[${(row.format||row.type||'').toUpperCase()}]`);
-          if(row.hook) parts.push(`Hook : ${row.hook}`);
-          if(row.concept) parts.push(`Concept : ${row.concept}`);
-          if(row.script) parts.push(`Script : ${row.script}`);
-          if(row.inspiration) parts.push(`Ref : ${row.inspiration}`);
-          if(parts.length) lines.push(`   • ${parts.join(' | ')}`);
-        });
-      }
-    });
-  }
-  const text=lines.join('\n');
-  navigator.clipboard.writeText(text).then(()=>{
-    const orig=btn.innerHTML;
-    btn.innerHTML='<i class="ti ti-check" style="font-size:12px"></i> Copié !';
-    btn.style.color='var(--green)';
-    setTimeout(()=>{btn.innerHTML=orig;btn.style.color='';},2000);
-  }).catch(()=>showToast('Erreur copie'));
-}
-
 function renderAnglesView(p, av){
   const initials = av.name.substring(0,2).toUpperCase();
   const col = avColor(av.name);
@@ -8955,7 +8904,7 @@ function renderAnglesView(p, av){
 
   return `
     <div class="pp-head">
-      <button class="angles-back" onclick="closeAngles()"><i class="ti ti-arrow-left"></i>Retour aux Avatars</button>
+      <button class="angles-back" onclick="closeAngles()"><i class="ti ti-arrow-left"></i>Avatars</button>
       <div class="pp-head-img" style="background:${col}">${photoHTML}</div>
       <div>
         <div class="pp-head-name">${xss(av.name)} · ${xss(av.gender)} · ${xss(av.age)} ans</div>
